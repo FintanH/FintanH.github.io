@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head profile="http://www.w3.org/2005/10/profile">
+    <meta charset="UTF-8">
+    <meta name="description" content="Functionally Resilient">
+    <meta name="author" content="Fintan Halpenny">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <meta name="Fintan Halpenny" content="Fintan Halpenny, fintan.halpenny@gmail.com">
+    <title>Free Me - Exploring the Free Data Type</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a id="beacon" href="/">
+                <div id="home-text"> ΛⱯ </div>
+            </a>
+        </nav>
+    
+        <div class="right-sidebar">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+        <div id="theme-button">DAY</div>
+        </div>
+    </header>
+
+<div id="page">
+    <div class="wrapper">
+        <div class="masthead">
+            <span class="title">
+                Free Me - Exploring the Free Data Type
+            </span>
+            <br>
+
+            <br>
+            <span class="byline">by Fintan Halpenny</span>
+            <br>
+            <span class="date">Sep 7, 2017</span>
+            <br>
+            <div class="metadata">
+            </div>
+        </div>
+    </div>
+    <article class="post">
+        <p><img src="https://cdn-images-1.medium.com/max/800/1*V8EaLWgy9CmG6FByI1uF5A.jpeg" alt="Image taken from: http://www.brainlesstales.com/2010-10-28/set-me-free" /></p>
+<p>So you may have heard of the Free monad upon your journey of exploring functional programming. You may have even read a blog or two, or even three about it. You may have even implemented a DSL (Domain Specific Language) with it. Well hopefully I'm going to provide you with a fresh take on exploring Free. What I wanted to do for myself was explore Free from first principles and implement some core functionality from the ground up to see how things work under the hood. This post is about what happened when I did this.</p>
+<h2 id="new-beginnings">New Beginnings</h2>
+<p>The first part of my journey was to take a trip on over to Edward Kmett's package <code>free</code>, more specifically, the data definition: <a href="https://www.stackage.org/haddock/lts-9.4/free-4.12.4/Control-Monad-Free.html#t:Free" class="uri">https://www.stackage.org/haddock/lts-9.4/free-4.12.4/Control-Monad-Free.html#t:Free</a></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">data</span> <span class="dt">Free</span> f a <span class="fu">=</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">    <span class="dt">Pure</span> a</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  <span class="fu">|</span> <span class="dt">Free</span> (f (<span class="dt">Free</span> f a))</a></code></pre></div>
+<p>So we have our data definition with the name <code>Free</code> taking two type parameters, <code>f</code> and <code>a</code>. With this definition we have two constructors <code>Pure</code> and <code>Free</code>. There are many good explanations of this structure and I won't get into it here. There are better explanations that I will provide below, but for now we will say that this data type describes and abstract syntax tree (AST) for general computation. Or in other words, we can write programs with it.</p>
+<h2 id="functor">Functor</h2>
+<p>Alrighty, we have our data type and that's cool. But now we want to be able to do things with it. More specifically, we will make this data type an instance of three of our favourite typeclasses: Functor, Applicative and Monad. We will start from <code>Functor</code> and work our way up the chain.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a></code></pre></div>
+<p>So already we have something interesting here. We cannot straight up define a <code>Functor</code> for <code>Free</code> without saying that the <code>f</code> inside is a <code>Functor</code>. The reason being, that we need the power of <code>fmap</code> to access the structure.</p>
+<p>So let's think about what the type signature of <code>fmap</code> looks like for <code>Free</code>. Our regular <code>fmap</code> looks like <code>fmap :: (a -&gt; b) -&gt; f a -&gt; f b</code>. If we substitute our data definition for <code>Free</code> in there we get <code>fmap :: (a -&gt; b) -&gt; Free f a -&gt; Free f b</code>. Cool, so let's try implement it!</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">  fmap f (<span class="dt">Free</span> freer) <span class="fu">=</span> _iWantToBreakFree</a></code></pre></div>
+<p>I'm going to use a little type hole driven development here and reason about the types. So the types in scope are:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="ot">freer ::</span> f (<span class="dt">Free</span> f)</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="ot">_iWantToBreakFree ::</span> <span class="dt">Free</span> f b</a></code></pre></div>
+<p>So we need to do something with <code>freer</code> and we know <code>f</code> is a functor, thus we will reach for <code>fmap</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">  fmap f (<span class="dt">Free</span> freer) <span class="fu">=</span> fmap _iWantToBreakFree freer</a></code></pre></div>
+<p>This will get us some mileage. My thinking is that we have some sort of <code>Free f a</code> inside that first <code>f</code> and we will probably want to change it into a <code>Free f b</code>. And you know what? That's exactly what we will do, and we have the perfect function <code>(a -&gt; b) -&gt; Free f a -&gt; Free f b</code>, also known as <code>fmap</code>!</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">  fmap f (<span class="dt">Free</span> freer) <span class="fu">=</span> fmap (fmap f) freer</a></code></pre></div>
+<p>Now the only thing we are missing here is that we unwrapped a <code>Free</code> so we need to wrap it up again, and our final solution for this is:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">  fmap f (<span class="dt">Free</span> freer) <span class="fu">=</span> <span class="dt">Free</span> <span class="fu">$</span> fmap (fmap f) freer</a></code></pre></div>
+<p>&quot;What about <code>Pure</code>?!&quot;, I hear you cry out. Well you are not wrong and let's bang it out.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-2" data-line-number="2">  fmap f (<span class="dt">Pure</span> a) <span class="fu">=</span> <span class="dt">Pure</span> <span class="fu">$</span> f a</a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">  fmap f (<span class="dt">Free</span> freer) <span class="fu">=</span> <span class="dt">Free</span> <span class="fu">$</span> fmap (fmap f) freer</a></code></pre></div>
+<p>We just need to unwrap, apply and wrap up. Ezpz. So this is cool, we have a <code>Functor</code> instance for <code>Free</code> so we can lift functions into our <code>Free</code> structure; very nice!</p>
+<h2 id="applicative">Applicative</h2>
+<p>Now that we've defined <code>Functor</code> for the <code>Free</code> data type, we are free to define <code>Applicative</code> (I promise that's the first and last time I will make that pun).</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Applicative</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a></code></pre></div>
+<p>Again, we start by saying that we need <code>f</code> to be a <code>Functor</code> so we have enough power in our hands to get things working. First off let's get a quick refresher on <code>Applicative</code>. To define an <code>Applicative</code> we need to define two functions <code>pure</code> and <code>(&lt;*&gt;)</code>. Let's make things super clear and write out the types for these functions when we talk about them with <code>Free</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Applicative</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb10-2" data-line-number="2"><span class="ot"> pure ::</span> a <span class="ot">-&gt;</span> <span class="dt">Free</span> f a</a>
+<a class="sourceLine" id="cb10-3" data-line-number="3"><span class="ot"> (&lt;*&gt;) ::</span> <span class="dt">Free</span> f (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> <span class="dt">Free</span> f a <span class="ot">-&gt;</span> <span class="dt">Free</span> f b</a></code></pre></div>
+<p>Let's get some of the easier things out of the way.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Applicative</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-2" data-line-number="2"> — <span class="fu">|</span> <span class="dt">I</span> think the name was a hint</a>
+<a class="sourceLine" id="cb11-3" data-line-number="3"> pure <span class="fu">=</span> <span class="dt">Pure</span></a></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" data-line-number="1"> — <span class="fu">|</span> <span class="dt">Unwrap</span> the function and value, apply and rewrap<span class="fu">!</span></a>
+<a class="sourceLine" id="cb12-2" data-line-number="2"> (<span class="dt">Pure</span> f) <span class="fu">&lt;*&gt;</span> (<span class="dt">Pure</span> a) <span class="fu">=</span> <span class="dt">Pure</span> <span class="fu">$</span> f a</a></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" data-line-number="1"> — <span class="fu">|</span> <span class="dt">Here</span> we have a function wrapped <span class="kw">in</span> <span class="ot">`Pure`</span> and a <span class="ot">`Free`</span></a>
+<a class="sourceLine" id="cb13-2" data-line-number="2"> — <span class="fu">|</span> recursive structure<span class="fu">.</span></a>
+<a class="sourceLine" id="cb13-3" data-line-number="3"> (<span class="dt">Pure</span> f) <span class="fu">&lt;*&gt;</span> (<span class="dt">Free</span> freer) <span class="fu">=</span> <span class="dt">Free</span> <span class="fu">$</span> fmap (fmap f) freer</a></code></pre></div>
+<p>I think these last two are super cool, because they are actually just <code>fmap</code> once we unwrap the function from <code>Pure</code>! So we can write this more succinctly as:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" data-line-number="1">(<span class="dt">Pure</span> f) <span class="fu">&lt;*&gt;</span> freer <span class="fu">=</span> fmap f freer</a></code></pre></div>
+<p>We have two cases left, both of which have something like <code>Free freeFunc</code> on the left hand side of our <code>&lt;*&gt;</code> operator. Now I am not gonna lie, this one really tripped me up because I was fighting with myself and the compiler implementing them. Maybe you see the solution already, and if so nice one! But what I am going to do here is take you through my struggle. My initial template looked like the following:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Free</span> freer) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb15-2" data-line-number="2"> _innerFunc <span class="fu">&lt;*&gt;</span> _innerFreer</a></code></pre></div>
+<p>There was a couple of things I knew. First I had to unwrap some structure and was going to end up applying <code>&lt;*&gt;</code> recursively. Let's look at the types we have to work with now.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" data-line-number="1"><span class="ot">freeFunc ::</span> f (<span class="dt">Free</span> f (a <span class="ot">-&gt;</span> b))</a>
+<a class="sourceLine" id="cb16-2" data-line-number="2"><span class="ot">freer ::</span> f (<span class="dt">Free</span> f a)</a></code></pre></div>
+<p>So we are posed with the challenge of accessing the things inside our <code>f</code>. We should be immediately thinking <code>fmap</code> here! So let's try add to our solution:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Free</span> freer) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb17-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (\innerFunc <span class="ot">-&gt;</span> innerFunc <span class="fu">&lt;*&gt;</span> _innerFreer) freeFunc</a></code></pre></div>
+<p>Our next step was to <code>fmap</code> over <code>freeFunc</code> to get to our inner <code>Free f (a -&gt; b)</code> and then we want to <code>&lt;*&gt;</code> to some <code>_innerFreer</code>, not knowing what that is, yet. Finally, wrapping it back up in <code>Free</code>. So that leaves us with <code>_innerFreer</code> being the type of <code>Free f a</code> and we still have to use <code>freer</code>. So let's try add it in.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Free</span> freer) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb18-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (\innerFunc <span class="ot">-&gt;</span> fmap (\inner <span class="ot">-&gt;</span> innerFunc <span class="fu">&lt;*&gt;</span> inner) freer) freeFunc</a></code></pre></div>
+<p>Here we will get some noise (I say noise, but it's actually really helpful) from the compiler about the following errors:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb19-1" data-line-number="1"><span class="dt">Expected</span> <span class="kw">type</span><span class="fu">:</span> <span class="dt">Free</span> f b</a>
+<a class="sourceLine" id="cb19-2" data-line-number="2"><span class="dt">Actual</span> <span class="kw">type</span><span class="fu">:</span> <span class="dt">Free</span> f (<span class="dt">Free</span> f b)</a></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" data-line-number="1">…</a></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb21-1" data-line-number="1"><span class="dt">Expected</span> <span class="kw">type</span><span class="fu">:</span> f (<span class="dt">Free</span> f (<span class="dt">Free</span> f b))</a>
+<a class="sourceLine" id="cb21-2" data-line-number="2"><span class="dt">Actual</span> <span class="kw">type</span><span class="fu">:</span> f (f (<span class="dt">Free</span> f b))</a></code></pre></div>
+<p>Well, if we remember that we unwrapped our <code>freer</code>. When we unwrap we need to rewrap! So we finish it all of by doing:</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb22-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Free</span> freer) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb22-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (\innerFunc <span class="ot">-&gt;</span> <span class="dt">Free</span> <span class="fu">$</span> fmap (\inner <span class="ot">-&gt;</span> innerFunc <span class="fu">&lt;*&gt;</span> inner) freer) freeFunc</a></code></pre></div>
+<p>So we have one last case to implement with <code>Free</code> on the left hand side and <code>Pure</code> on the right.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Pure</span> a) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb23-2" data-line-number="2"> _iWantToBreakFree</a></code></pre></div>
+<p>As usual we will start off by looking at what types we have to work with:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" data-line-number="1"><span class="ot">freeFunc ::</span> f (<span class="dt">Free</span> f (a <span class="ot">-&gt;</span> b))</a>
+<a class="sourceLine" id="cb24-2" data-line-number="2"><span class="ot">a ::</span> a</a></code></pre></div>
+<p>Somehow we are going to have to get into the <code>f</code> of our <code>freeFunc</code>, and I am sure you are seeing the pattern now, we have to use <code>fmap</code>.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Pure</span> a) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb25-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (\innerFunc <span class="ot">-&gt;</span> innerFunc <span class="fu">&lt;*&gt;</span> _iWantToBreakFree) freeFunc</a></code></pre></div>
+<p>So the last thing we need is to fill in the <code>_iWantToBreakFree</code> hole. If we think about what type this is we will come to the conclusion it needs to be a <code>Free a</code>. There's only one <code>Free a</code> we can construct and that is <code>Pure a</code>!</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb26-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> (<span class="dt">Pure</span> a) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb26-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (\innerFunc <span class="ot">-&gt;</span> innerFunc <span class="fu">&lt;*&gt;</span> <span class="dt">Pure</span> a) freeFunc</a></code></pre></div>
+<p>And that is it! We have completed the <code>Applicative</code> instance for <code>Free</code>. I know what you are thinking now, &quot;But Fintan, you said you had trouble with this one?&quot; and you would be right to ask. So two things, I failed to tease out the full implementation with the <code>Free</code> constructor on both sides, until writing this. So I ended up cheating and looked at the source to get the answer. BUT! I did learn that you can abstract the last two cases. So I will show you the easier way of doing them and explain what is happening.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb27-1" data-line-number="1">(<span class="dt">Free</span> freeFunc) <span class="fu">&lt;*&gt;</span> freer <span class="fu">=</span></a>
+<a class="sourceLine" id="cb27-2" data-line-number="2"> <span class="dt">Free</span> <span class="fu">$</span> fmap (<span class="fu">&lt;*&gt;</span> freer) freeFunc</a></code></pre></div>
+<p>Damn that is nice! So what's up here? As usual we need to unwrap but this time we are only doing the left hand side. &quot;Why are we only unwrapping the left hand side?&quot;, I hear you ask. Very good question, you are an astute reader (more astute than me, anyway). Well let's look at the types!</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb28-1" data-line-number="1"><span class="ot">freeFunc ::</span> f (<span class="dt">Free</span> f (a <span class="ot">-&gt;</span> b))</a>
+<a class="sourceLine" id="cb28-2" data-line-number="2"><span class="ot">freer ::</span> <span class="dt">Free</span> f a</a></code></pre></div>
+<p>So, we know we want to apply <code>&lt;*&gt;</code> recursively. When we <code>fmap</code> into the inner part of <code>freeFunc</code> and want to use <code>&lt;*&gt;</code> all we are looking for is a <code>Free a</code>. Look what we have here, it's a <code>Free a</code> going by the name <code>freer</code>. Making the whole thing easy for us.</p>
+<h2 id="monad">Monad</h2>
+<p>We are onto the final of our three. We are going to put the <code>Monad</code> in <code>Free Monad</code>! We will gloss over <code>return</code> since it is the same as <code>pure</code>. What we will look at more closely is <code>(&gt;&gt;=)</code> . So as we usually do, let's take a look at the types.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb29-1" data-line-number="1"><span class="ot">(&gt;&gt;=) ::</span> <span class="dt">Free</span> f a <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> <span class="dt">Free</span> f b) <span class="ot">-&gt;</span> <span class="dt">Free</span> f b</a></code></pre></div>
+<p>That's cool. We have our <code>Free f a</code> then a function <code>a -&gt; Free f b</code> and get out a <code>Free f b</code>. Let's get started with the implementation!</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Monad</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb30-2" data-line-number="2">  (<span class="dt">Pure</span> a) <span class="fu">&gt;&gt;=</span> k <span class="fu">=</span> k a</a></code></pre></div>
+<p>This one is easy money, unwrap our <code>a</code> and apply our function <code>k</code> and, hey presto, we have a <code>Free f b</code>. Moving onto the <code>Free</code> constructor case.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb31-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Monad</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb31-2" data-line-number="2">  (<span class="dt">Pure</span> a) <span class="fu">&gt;&gt;=</span> k <span class="fu">=</span> k a</a>
+<a class="sourceLine" id="cb31-3" data-line-number="3">  (<span class="dt">Free</span> freer) <span class="fu">&gt;&gt;=</span> k <span class="fu">=</span> _iWantToBreakFree</a></code></pre></div>
+<p>Hmmmm, what should we do? Oh ya, the same as every other time! <code>fmap</code> over, apply recursively and wrap it all up again.</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb32-1" data-line-number="1"><span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> <span class="dt">Monad</span> (<span class="dt">Free</span> f) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb32-2" data-line-number="2">  (<span class="dt">Pure</span> a) <span class="fu">&gt;&gt;=</span> k <span class="fu">=</span> k a</a>
+<a class="sourceLine" id="cb32-3" data-line-number="3">  (<span class="dt">Free</span> freer) <span class="fu">&gt;&gt;=</span> k <span class="fu">=</span> <span class="dt">Free</span> <span class="fu">$</span> fmap (<span class="fu">&gt;&gt;=</span> k) freer</a></code></pre></div>
+<h2 id="some-helpers-from-myfriends">Some Helpers From my Friends</h2>
+<p>This is awesome, we have our instances, which from the look of the <code>free</code> there can be many more! But instead, we will define two functions that will help us in our endeavour of writing a DSL using <code>Free</code>. These two functions will be <code>liftF</code> and <code>foldFree</code>. <code>liftF</code> allows us to lift any <code>Functor</code> into a <code>Free</code> structure and <code>foldFree</code> allows us to fold our <code>Free</code> structure into a <code>Monad</code>. The first is useful for writing helper functions to describe actions in the DSL and the second is helpful for interpreting our DSL into some <code>Monad</code>.</p>
+<p>Let's look at <code>liftF</code> first:</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb33-1" data-line-number="1"><span class="ot">liftF ::</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> <span class="dt">Free</span> f a</a>
+<a class="sourceLine" id="cb33-2" data-line-number="2">liftF <span class="fu">=</span> _iWantToBreakFree</a></code></pre></div>
+<p>My first instinct is to use the <code>Free</code> constructor on our <code>Functor</code> but that does not give us what we need. To explain, we want a <code>Free f a</code> but the constructor <code>Free</code> needs a <code>f (Free f a)</code>. So to turn the inside of our Functor into a <code>Free</code> will utilise <code>fmap</code> and <code>Pure</code>. Our final definition is:</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb34-1" data-line-number="1"><span class="ot">liftF ::</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> f a <span class="ot">-&gt;</span> <span class="dt">Free</span> f a</a>
+<a class="sourceLine" id="cb34-2" data-line-number="2">liftF <span class="fu">=</span> <span class="dt">Free</span> <span class="fu">.</span> fmap <span class="dt">Pure</span></a></code></pre></div>
+<p>Next up on our list is <code>foldFree</code>:</p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb35-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a></code></pre></div>
+<p>To quickly explain, the first parameter to <code>foldFree</code> is a function going from any <code>f x</code> to a <code>Monad</code>, <code>m x</code>. This is called a &quot;natural transformation&quot; if you want to explore this concept more. The <code>forall x.</code> says that this function must work for any <code>x</code> but we don't know what <code>x</code> at this time. We then use this function to fold down our <code>Free f x</code> structure to the <code>Monad</code> , <code>m</code>. Let's get into the thick of it and implement it.</p>
+<p>Let's do the easy case first:</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb36-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb36-2" data-line-number="2">foldFree _ (<span class="dt">Pure</span> a) <span class="fu">=</span> pure a</a></code></pre></div>
+<p>We extract our <code>a</code> from <code>Pure</code> and use the <code>Monad</code>\'s <code>pure</code> to place in that context instead. Next up:</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb37-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb37-2" data-line-number="2">foldFree k (<span class="dt">Free</span> freer) <span class="fu">=</span> _iWantToFoldFree</a></code></pre></div>
+<p>Let's see what we have here:</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb38-1" data-line-number="1"><span class="ot">k ::</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb38-2" data-line-number="2"><span class="ot">freer ::</span> f (<span class="dt">Free</span> f a)</a></code></pre></div>
+<p>We don't have our trusty <code>fmap</code> here because we never said <code>f</code> was a functor, so there's really only one thing we can do, and that's apply <code>k</code> to <code>freer</code>!</p>
+<div class="sourceCode" id="cb39"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb39-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb39-2" data-line-number="2">foldFree k (<span class="dt">Free</span> freer) <span class="fu">=</span> _iWantToFoldFree (k freer)</a></code></pre></div>
+<p>Let's just think about what this gives us in terms of types:</p>
+<div class="sourceCode" id="cb40"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb40-1" data-line-number="1"><span class="ot">k ::</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb40-2" data-line-number="2"><span class="ot">freer ::</span> f (<span class="dt">Free</span> f a)</a>
+<a class="sourceLine" id="cb40-3" data-line-number="3">k<span class="ot"> freer ::</span> m (<span class="dt">Free</span> f a)</a></code></pre></div>
+<p>So when we apply it we actually have a <code>Monad</code> with <code>Free f a</code> inside it. Well what can we do next to break down that inner <code>Free</code> even further? Well since we are working with a <code>Monad</code> we can utilise <code>(&gt;&gt;=)</code>.</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb41-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb41-2" data-line-number="2">foldFree k (<span class="dt">Free</span> freer) <span class="fu">=</span> k freer <span class="fu">&gt;&gt;=</span> _iWantToFoldFree</a></code></pre></div>
+<p>Again we should ask, what is the type of <code>_iWantToFoldFree</code>? Well using the type signature of <code>(&gt;&gt;=)</code> we can figure this out. If <code>k freer</code> is <code>m (Free f a)</code> and our result should be <code>m x</code> due to our <code>foldFree</code> type signature, then we would expect:</p>
+<div class="sourceCode" id="cb42"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb42-1" data-line-number="1"><span class="ot">(&gt;&gt;=) ::</span> m (<span class="dt">Free</span> f a) <span class="ot">-&gt;</span> (<span class="dt">Free</span> f a <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> m x</a></code></pre></div>
+<p>Hmmm, that function in the middle of our signature looks pretty familiar... That's right! It's our <code>foldFree</code> with the natural transformation already applied! And of course we can feel at ease with this solution because it's recursive.</p>
+<div class="sourceCode" id="cb43"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb43-1" data-line-number="1"><span class="ot">foldFree ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (forall x<span class="fu">.</span> f x <span class="ot">-&gt;</span> m x) <span class="ot">-&gt;</span> <span class="dt">Free</span> f x <span class="ot">-&gt;</span> m x</a>
+<a class="sourceLine" id="cb43-2" data-line-number="2">foldFree k (<span class="dt">Free</span> freer) <span class="fu">=</span> k freer <span class="fu">&gt;&gt;=</span> foldFree k</a></code></pre></div>
+<h2 id="final-words">Final Words</h2>
+<p>Well damn, that turned out to be quite the lengthy article just to explain a few functions, but this actually gives us enough power to write as many DSLs as we want. On top of this we now understand how <code>Free</code> actually works and not just how to use it! That's something extremely useful in itself.</p>
+<p>Something else we can learn from this is that type driven development is amazingly useful. When we constrain ourselves to certain typeclasses and polymorphism we can only do so many things. This way our solutions tend to &quot;fall out&quot; and we can reason about what our program is doing. Then we can utilise the polymorphism, writing the implementation once and reusing many times. Very cool!</p>
+<p>If you want to see some actual code with rambling comments that inspired this article you can check out <a href="https://github.com/FintanH/free-me">free-me</a>. On top of that there's a mini IO DSL example that everyone seems to write as their Hello, World of <code>Free</code>. I will probably write about that next time. Maybe.</p>
+<p>And as promised, here is some resources on <code>Free</code>:</p>
+<ul>
+<li><a href="http://dlaing.org/cofun/posts/free_and_cofree.html" class="uri">http://dlaing.org/cofun/posts/free_and_cofree.html</a></li>
+<li><a href="http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html" class="uri">http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html</a></li>
+<li><a href="https://youtu.be/eKkxmVFcd74?list=WL" class="uri">https://youtu.be/eKkxmVFcd74?list=WL</a></li>
+</ul>
+<p>If you have any feed back, questions or further information you can reach out to me. I'm alway <code>Free</code> for a chat (I lied there's the second pun).</p>
+
+        <br>
+        <br>
+
+        <!--Share buttons-->
+        <div class="social-buttons">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
+</article>
+
+</div>
+
+<footer>
+    Built with Haskell ❤️
+</footer>
+
+<link href='https://fonts.googleapis.com/css?family=Quicksand:300,400' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+<script src="/js/main.js"></script>
+</body>
+</html>

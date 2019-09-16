@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head profile="http://www.w3.org/2005/10/profile">
+    <meta charset="UTF-8">
+    <meta name="description" content="Functionally Resilient">
+    <meta name="author" content="Fintan Halpenny">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <meta name="Fintan Halpenny" content="Fintan Halpenny, fintan.halpenny@gmail.com">
+    <title>Yo, Yoneda!</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a id="beacon" href="/">
+                <div id="home-text"> ΛⱯ </div>
+            </a>
+        </nav>
+    
+        <div class="right-sidebar">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+        <div id="theme-button">DAY</div>
+        </div>
+    </header>
+
+<div id="page">
+    <div class="wrapper">
+        <div class="masthead">
+            <span class="title">
+                Yo, Yoneda!
+            </span>
+            <br>
+
+            <br>
+            <span class="byline">by Fintan Halpenny</span>
+            <br>
+            <span class="date">Nov 28, 2018</span>
+            <br>
+            <div class="metadata">
+            </div>
+        </div>
+    </div>
+    <article class="post">
+        <h1 id="yo-yoneda">Yo, Yoneda!</h1>
+<h2 id="a-tale-of-normalisation">A Tale of Normalisation</h2>
+<p>In the <a href="https://functional.works-hub.com/learn/bowl-full-of-lentils-fcbf3">last post</a> we left off having gone through the basics of <a href="https://github.com/dhall-lang/dhall-lang">Dhall</a> and defining an <code>Either</code> type. For this post the aim of the game is to look into defining <code>Functor</code>s in Dhall and then seeing how <code>Yoneda</code> relates to <code>Functor</code>s and why it helps us in Dhall. Without further ado, let's get stuck in with <code>Functor</code>!</p>
+<h2 id="functor">Functor</h2>
+<p>To begin, let's deconstruct what we know about <code>Functor</code> (in most programming languages) and build up the definition from there. The first thing we know about <code>Functor</code> is that it abstacts over some <code>f</code> that has a kind <code>Type → Type</code>.</p>
+<p>The other thing we know about <code>Functor</code> is that it defines a higher-order function called <code>map</code>. This higher order function takes an <code>(a → b)</code> and gives us back a function <code>f a → f b</code>.</p>
+<p>To define this in Dhall we define it is a record type with a field called <code>map</code>. So let's see what that looks like:</p>
+<pre><code>  λ(f : Type → Type)
+→ { map : ∀(a : Type) → ∀(b : Type) → (a → b) → f a → f b }</code></pre>
+<p>Breaking this down we can see:</p>
+<ul>
+<li>An <code>f</code> that is of type <code>Type → Type</code>, corresponding to our required kind.</li>
+<li>A record containing a field <code>map</code> which defines the higher-order function.</li>
+<li>The higher-order function for all <code>a</code>, and for all <code>b</code>, and the required function <code>(a → b) → f a → f b</code>.</li>
+</ul>
+<p>Placing this in a file <code>Functor/Type</code> and running it through Dhall we get:</p>
+<pre><code>$ dhall &lt;&lt;&lt; &quot;./Functor/Type&quot;
+∀(f : Type → Type) → Type
+
+λ(f : Type → Type) → { map : ∀(a : Type) → ∀(b : Type) → (a → b) → f a → f b }</code></pre>
+<p>With that I invite you to try implement <code>Functor</code> for <code>Either</code> under a file called <code>Either/functor</code>. If you get stuck the solution is below. Some things to note are that you will need to import the <code>Either</code> type that was defined in the last post (or write it in-line), and the <code>Functor/Type</code> we have just defined to add a type annotation so that we make sure we aren't lying about the implementation.</p>
+<pre><code>    let Functor = ./../Functor/Type
+
+in  let Either = ./Type
+
+in    λ(a : Type)
+    →   { map =
+              λ(b : Type)
+            → λ(c : Type)
+            → λ(f : b → c)
+            → λ(either : Either a b)
+            →     let E = constructors (Either a c)
+
+              in  merge
+                  { Left =
+                      λ(x : a) → E.Left x
+                  , Right =
+                      λ(x : b) → E.Right (f x)
+                  }
+                  either
+        }
+      : Functor (Either a)
+</code></pre>
+<p>Since <code>Either</code> has a kind <code>Type → Type → Type</code> we have to introduce what the <code>a</code> for the <code>Left</code> part of the union type. Then we introduce the types we will be transforming in our <code>map</code> function (<code>b</code> and <code>c</code> in this case) and the <code>either</code> that we will be mapping over. We will need to construct new values of type <code>Either a c</code>, handling each case of the union. Finally we collapse the <code>either</code> we were given and reconstruct a new one with function <code>f</code> applied to the <code>Right</code> side.</p>
+<h2 id="traffic-problem-with-merge">Traffic Problem with <code>merge</code></h2>
+<p>This is where we're going to see that we run into a bit of code bloat with Dhall. Let's look at what happens when we <code>map</code> multiple functions one after the other over some <code>Either</code> value.</p>
+<pre><code>    let Either = ./Either/Type Text Natural
+
+in  let map = (./Either/Functor Text).map
+
+in    λ(e : Either)
+    → map
+      Natural
+      Natural
+      (λ(i : Natural) → i + 5)
+      ( map
+        Natural
+        Natural
+        (λ(i : Natural) → i + 4)
+        ( map
+          Natural
+          Natural
+          (λ(i : Natural) → i + 3)
+          ( map
+            Natural
+            Natural
+            (λ(i : Natural) → i + 2)
+            (map Natural Natural (λ(i : Natural) → i + 1) e)
+          )
+        )
+      )
+</code></pre>
+<p>Not the prettiest code ever but it will be demonstrative of the point so let's run this through Dhall:</p>
+<pre><code>$ dhall &lt;&lt;&lt; &quot;./lots-o-map&quot;
+
+
+∀(e : &lt; Left : Text | Right : Natural &gt;) → &lt; Right : Natural | Left : Text &gt;
+
+  λ(e : &lt; Left : Text | Right : Natural &gt;)
+→ merge
+  { Left =
+      λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+  , Right =
+      λ(y : Natural) → &lt; Right = y + 5 | Left : Text &gt;
+  }
+  ( merge
+    { Left =
+        λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+    , Right =
+        λ(y : Natural) → &lt; Right = y + 4 | Left : Text &gt;
+    }
+    ( merge
+      { Left =
+          λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+      , Right =
+          λ(y : Natural) → &lt; Right = y + 3 | Left : Text &gt;
+      }
+      ( merge
+        { Left =
+            λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+        , Right =
+            λ(y : Natural) → &lt; Right = y + 2 | Left : Text &gt;
+        }
+        ( merge
+          { Left =
+              λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+          , Right =
+              λ(y : Natural) → &lt; Right = y + 1 | Left : Text &gt;
+          }
+          e
+        )
+      )
+    )
+  )</code></pre>
+<p>That's a lot of nested merges! And if we output it into a file by doing <code>dhall &lt;&lt;&lt; &quot;./lot-o-map&quot; &gt; output</code> we can inspect the size of it and we can see it's 941B. In more complicated use cases where you are using <code>map</code> repeatedly your expressions can become GBs; Woof! 🐶</p>
+<p>Sure this seems like a trivial case but it can occur (and did in our <a href="https://formation.ai/">Formation</a> code base) in more complex code. While using Dhall at work we had a <code>traverse</code> that contained multiple uses of <code>map</code> inside the body, that traversed a large AST of nested unions. This meant there was a lot of <code>map</code>s accumulating. We had an output of 300MB, which was slowing down the Haskell code that was trying to read this in. So what can we do about it?!</p>
+<h2 id="yo-yoneda-1">Yo, Yoneda!</h2>
+<p>Enter <code>Yoneda</code>! I first heard about this through my good friend <a href="http://reasonablypolymorphic.com/">reasonablypolymorphic</a>. Sandy was talking about <code>Yoneda</code> and how it can help Haskell generics code for more efficient implementations. On top of this, I recently saw a <a href="https://gist.github.com/Icelandjack/02069708bc75f4284ac625cd0e2ec81f">post</a> by <a href="https://gist.github.com/Icelandjack">Icelandjack</a> laying out a wonderful derivation on <code>Yoneda</code> giving a good intuition of the underlying theory.</p>
+<p>In this post we will see how it becomes useful in Dhall code, and we will start by seeing how we define it in Dhall.</p>
+<p>We can define <code>Yoneda</code> in Dhall like so:</p>
+<pre><code>λ(f : Type → Type) → λ(a : Type) → ∀(b : Type) → (a → b) → f b</code></pre>
+<p>We will make this easier to digest by looking at each part individually. The first thing we have is an <code>f</code> that is of kind <code>Type → Type</code>. We then have an <code>a</code> of kind <code>Type</code>.</p>
+<p>When these are applied we get back a higher-order function <code>(a → b) → f b</code> for all <code>b</code>. This description should start to sound <em>very</em> familiar.</p>
+<p><code>Yoneda</code> is known as the &quot;Free Functor&quot; because we can define a <code>Functor</code> <code>map</code> operation on it for <em>anything</em> that is of kind <code>Type → Type</code>!</p>
+<p>So at this point we should look at how the <code>Functor</code> implementation is defined for <code>Yoneda</code>:</p>
+<pre><code>    -- unfortunately we have to define this here...
+    let compose =
+            λ(a : Type)
+          → λ(b : Type)
+          → λ(c : Type)
+          → λ(f : b → c)
+          → λ(g : a → b)
+          → λ(x : a)
+          → f (g x)
+
+in let  Yoneda = ./Type
+
+in    λ(f : Type → Type)
+    →   { map =
+              λ(a : Type)
+            → λ(b : Type)
+            → λ(g : a → b)
+            → λ(yoneda : Yoneda f a)
+            → λ(c : Type)
+            → λ(k : b → c)
+            → yoneda c (compose a b c k g)
+        }
+      : ./../Functor/Type (Yoneda f)</code></pre>
+<p>At the top we define <code>compose</code> to make the definition a bit easier to read, and unfortunately there isn't a builtin way to compose two functions in Dhall.</p>
+<p>Moving on, since <code>Yoneda</code> has kind <code>(Type → Type) → Type → Type</code> we need to introduce our <code>f : Type → Type</code>. We then see our usual set up of <code>map</code> but things get interesting at <code>λ(c : Type)</code>.</p>
+<p>Remember that <code>∀(b : Type)</code>? Well the <code>λ(c : Type)</code> is fulfilling this part of <code>Yoneda</code> for us. Next, <code>λ(k : b → c)</code> is the <code>(a → b)</code> part of the <code>Yoneda</code> definition. For the final line we'll inspect each piece individually because it can be a bit mind-melty 🙀.</p>
+<ol>
+<li><p>Reasoning about the type of <code>yoneda : Yoneda f a</code> we can find that it's <code>∀(b : Type) → (a → b) → f b</code> since we have just applied the first two requirements, <code>f</code> and <code>a</code>.</p></li>
+<li><p><code>yoneda c</code> applies the <code>c</code> type to our <code>∀(b : Type)</code> so its type is <code>(a → c) → f c</code></p></li>
+<li><p><code>compose a b c k g</code> seems a bit noisy, but the first three parameters are the types <code>a</code>, <code>b</code>, and <code>c</code>. It then composes our two functions <code>k : b → c</code> and <code>g : a → b</code>, giving us a function of type <code>a → c</code>.</p></li>
+<li><p>Applying the result from 3. to the result of 2. we get an <code>f c</code>.</p></li>
+</ol>
+<p>So what <code>Yoneda</code> is doing is composing the two functions and associating them to the right. This reminds us of one of the <code>Functor</code> laws:</p>
+<pre><code>map g . map f === map (g . f)</code></pre>
+<p>On top of this function composition is associative:</p>
+<pre><code>    map h . (map g . map f)
+=== (map h . map g) . map f
+=== map h . map g . map f
+=== map (h . g . f)</code></pre>
+<p>But of course we aren't always working in terms of <code>Yoneda</code>. We need different semantics for different scenarios. Such as error handling with <code>Either</code>. So for this we have two functions in the <code>Yoneda</code> tool box to help us: <code>lift</code> and <code>lower</code>.</p>
+<p><code>lift</code> will <em>lift</em> your <code>f</code> into <code>Yoneda</code> and we define it in Dhall as:</p>
+<pre><code>  λ(f : Type → Type)
+→ λ(functor : ./../Functor/Type f)
+→ λ(a : Type)
+→ λ(fa : f a)
+→ λ(b : Type)
+→ λ(k : a → b)
+→ functor.map a b k fa</code></pre>
+<p>To summarise, we need:</p>
+<ol>
+<li>Our <code>f</code> that we're lifting</li>
+<li>Its <code>Functor</code> implementation</li>
+<li>The <code>a</code> <code>Type</code> that we're working on in the <code>f</code></li>
+<li>The <code>f a</code> value</li>
+<li>And the body of the <code>Yoneda</code> from <code>λ(b : Type)</code> onwards, i.e. <code>Yoneda f a</code>.</li>
+</ol>
+<p>Conversely, <code>lower</code> <em>lowers</em> the <code>Yoneda</code> to our <code>f</code>. Defined in Dhall as:</p>
+<pre><code>  λ(f : Type → Type)
+→ λ(a : Type)
+→ λ(yoneda : ./Type f a)
+→ yoneda a (λ(x : a) → x)</code></pre>
+<p>It uses the identity function, <code>λ(x : a) → x)</code>, and to understand why we can once again turn to one of the <code>Functor</code> laws that states:</p>
+<pre><code>map id === id</code></pre>
+<p>So identity acts as the &quot;default&quot; argument that acts as a no-op and gives us back our <code>f</code> structure.</p>
+<h2 id="slim-fast">Slim Fast</h2>
+<p>We've jumped through all these hoops: defined <code>Yoneda</code>, <code>lift</code>, and <code>lower</code>, and now what? Well let's see what happens when we change the earlier example to use <code>Yoneda</code>.</p>
+<p>We first <code>lift</code> our <code>Either</code> data into <code>Yoneda</code>, apply the series of <code>map</code>s, and finally <code>lower</code> the <code>Yoneda</code> back to <code>Either</code> so the interface of the function still looks the same.</p>
+<pre><code>    let EitherText = ./Either/Type Text
+
+in  let Either = EitherText Natural
+
+in  let lift = ./Yoneda/lift EitherText (./Either/Functor Text)
+
+in  let lower = ./Yoneda/lower EitherText
+
+in  let map = (./Yoneda/Functor EitherText).map
+
+in    λ(e : Either)
+    → lower
+      Natural
+      ( map
+        Natural
+        Natural
+        (λ(i : Natural) → i + 5)
+        ( map
+          Natural
+          Natural
+          (λ(i : Natural) → i + 4)
+          ( map
+            Natural
+            Natural
+            (λ(i : Natural) → i + 3)
+            ( map
+              Natural
+              Natural
+              (λ(i : Natural) → i + 2)
+              (map Natural Natural (λ(i : Natural) → i + 1) (lift Natural e))
+            )
+          )
+        )
+      )</code></pre>
+<p>And let's run it!</p>
+<pre><code>$ dhall &lt;&lt;&lt; &quot;./less-o-map&quot;
+∀(e : &lt; Left : Text | Right : Natural &gt;) → &lt; Right : Natural | Left : Text &gt;
+
+  λ(e : &lt; Left : Text | Right : Natural &gt;)
+→ merge
+  { Left =
+      λ(x : Text) → &lt; Left = x | Right : Natural &gt;
+  , Right =
+      λ(y : Natural) → &lt; Right = ((((y + 1) + 2) + 3) + 4) + 5 | Left : Text &gt;
+  }
+  e</code></pre>
+<p>🙌 look at that reduction! Getting some hard numbers by outputting to a file again by doing <code>dhall &lt;&lt;&lt; &quot;./less-o-map&quot; &gt; output</code>, we can see that's it 221B! That's roughly 4 times smaller! The best part about this is that reduction stays constant no matter how many maps we introduce because we will always only need one merge! 🎉 Remember that 330MB I mentioned before? It was reduced to 35MB which is roughly 10 times smaller!</p>
+<p>One open question that I have not resolved is do we definitely <em>need</em> a <code>Functor</code> implementation to <code>lift</code>? I said that we can use <code>Yoneda</code> with <em>any</em> <code>Type → Type</code>, but we still need it to be a <code>Functor</code> in the end. This could be useful for things like <code>Set</code> that do not fit into the <code>Functor</code> definition due to it reliance on <code>Ord</code>. But at least we get some sweet normalisation fusion, and that makes me a happy programmer!</p>
+
+        <br>
+        <br>
+
+        <!--Share buttons-->
+        <div class="social-buttons">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
+</article>
+
+</div>
+
+<footer>
+    Built with Haskell ❤️
+</footer>
+
+<link href='https://fonts.googleapis.com/css?family=Quicksand:300,400' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+<script src="/js/main.js"></script>
+</body>
+</html>

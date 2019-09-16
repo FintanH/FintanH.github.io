@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head profile="http://www.w3.org/2005/10/profile">
+    <meta charset="UTF-8">
+    <meta name="description" content="Functionally Resilient">
+    <meta name="author" content="Fintan Halpenny">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <meta name="Fintan Halpenny" content="Fintan Halpenny, fintan.halpenny@gmail.com">
+    <title>Compose Tetris</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a id="beacon" href="/">
+                <div id="home-text"> ΛⱯ </div>
+            </a>
+        </nav>
+    
+        <div class="right-sidebar">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+        <div id="theme-button">DAY</div>
+        </div>
+    </header>
+
+<div id="page">
+    <div class="wrapper">
+        <div class="masthead">
+            <span class="title">
+                Compose Tetris
+            </span>
+            <br>
+
+            <br>
+            <span class="byline">by Fintan Halpenny</span>
+            <br>
+            <span class="date">Jul 13, 2018</span>
+            <br>
+            <div class="metadata">
+            </div>
+        </div>
+    </div>
+    <article class="post">
+        <h2 id="in-the-beginning-there-was-function-composition">In the Beginning there was Function Composition</h2>
+<p>So let's talk composition. As programmers we see composition constantly. It's there even if you're not aware. If we have two functions <code>f</code> and <code>g</code> and we apply them one after the other, we're doing function composition.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1">f (g (x))</a></code></pre></div>
+<p>or in mathematical notation:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1">(f ∘ g)(x)</a></code></pre></div>
+<p>In Haskell this is so common that we have an operator for it:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="ot">(.) ::</span> (b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> c</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">(<span class="fu">.</span>) f g x <span class="fu">=</span> f (g x)</a></code></pre></div>
+<p>It's fun to note that composition is associative. Meaning if we have three functions <code>f</code>, <code>g</code>, and <code>h</code> then it doesn't matter what order we compose them in:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1"> (f <span class="fu">.</span> g) <span class="fu">.</span> h</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="fu">=</span> f <span class="fu">.</span> (g <span class="fu">.</span> h)</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="fu">=</span> f <span class="fu">.</span> g <span class="fu">.</span> h</a></code></pre></div>
+<p>And here's an example use of function composition in Haskell:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">capitaliseAllWords ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">capitaliseAllWords <span class="fu">=</span> unwords <span class="fu">.</span> map capitaliseWord <span class="fu">.</span> words</a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">  <span class="kw">where</span> capitaliseWord <span class="fu">=</span> map toUpper</a></code></pre></div>
+<p>We can read this right-to-left: splitting the incoming <code>String</code> into separate words, i.e. <code>[String]</code>, then <code>map capitaliseWord</code> over this list, and concatenate the list back into <code>String</code>. A simple and concise example to wet our whistles.</p>
+<h2 id="take-me-higher-andhigher">Take me Higher and Higher!</h2>
+<p>We can take the idea of composition to the next level. Before this though, we have to quickly go over higher-kinded types. Higher-kinded types are types that have a parameter. This means they are expecting types so that they can be a regular, happy type. Think of it like a type function:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="dt">Type</span>         <span class="co">-- Regular type</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2"><span class="dt">Type</span> <span class="ot">-&gt;</span> <span class="dt">Type</span> <span class="co">-- Higher-kinded type expecting one Type</span></a></code></pre></div>
+<p>Without further ado, let's look at examples! The first higher-kinded type that we will look at is the <code>Maybe</code> type. It goes by a few names but here is its definition in Haskell:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="kw">data</span> <span class="dt">Maybe</span> a <span class="fu">=</span> <span class="dt">Nothing</span> <span class="fu">|</span> <span class="dt">Just</span> a</a></code></pre></div>
+<p>When we look at the left-hand side of the <code>=</code> we see that the <code>Maybe</code> type has a parameter called<code>a</code>. We can fill the <code>a</code> with other types, e.g. <code>Maybe Int</code>, <code>Maybe String</code>, <code>Maybe (Maybe Bool)</code>.</p>
+<p>Another common type that is also higher-kinded is the list type:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">data</span> [a] <span class="fu">=</span> [] <span class="fu">|</span> a <span class="fu">:</span> [a]</a></code></pre></div>
+<p>Again, we have an <code>a</code> parameter that the list is waiting for to be filled. <strong>Exercise:</strong> Using the <code>:kind</code> command in the ghci-repl, explore the kind of the <code>[]</code> data type.</p>
+<p>We can also talk about things that take a type parameter more abstractly. We can say there is some type constructor <code>f</code> that takes a type parameter <code>a</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1">f a</a></code></pre></div>
+<p>With that covered we can talk about a type called <code>Compose</code>, defining it here as:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="kw">newtype</span> <span class="dt">Compose</span> f g a <span class="fu">=</span> <span class="dt">Compose</span></a></code></pre></div>
+<p>It takes to two higher-kinded types <code>f</code> and <code>g</code> and a type parameter <code>a</code> and gives us <code>f</code> and <code>g</code> composed. This looks a lot like our function composition right?!</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="ot">(.) ::</span> (b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> c</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">(<span class="fu">.</span>) f g x <span class="fu">=</span> f (g x)</a>
+<a class="sourceLine" id="cb11-3" data-line-number="3">            <span class="fu">^^^^^^^</span> <span class="dt">COMPOSITION</span><span class="fu">!!!</span></a></code></pre></div>
+<p>&quot;So, what's special about this new type we've introduced?&quot;, I hear you ask. I'll tell you what! We can define functions over the composition of these two things, but abstractly! We can compose two <code>Functor</code>s and two <code>Applicative</code>s. These commonly trip people up when exploring this. Especially since the nesting of two the <code>f</code> and <code>g</code> can make for some difficult type tetris when trying to implement <code>(&lt;*&gt;)</code> for two <code>Compose</code> values. I want to provide some further intuition on how to come to the solution to writing these instances.</p>
+<p>But before you read on, I would encourage you to fire up your ghci repl, open up your favourite editor and try implementing these. If you <em>reaaallllly</em> get stuck then you can read on, but learn by doing first 😄</p>
+<p><strong>Exercise</strong>: Implement the <code>Functor</code> and <code>Applicative</code> instance for <code>Compose</code>.</p>
+<h2 id="functors-on-functors-onfunctors">Functors on Functors on Functors</h2>
+<p>We'll start off with talking about composing two functors. To begin we'll look at the instance declaration:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Compose</span> f g) <span class="kw">where</span></a></code></pre></div>
+<p>As we've said, we're composing two <code>Functor</code>s so it would make sense that we rely on <code>f</code> and <code>g</code> being instances of <code>Functor</code>. The aim here is to change the <code>a</code>, nested within our <code>f</code> and <code>g</code>, into a <code>b</code>. This is more clear when we take a look at the signature for <code>fmap</code> specialised to <code>Compose</code>.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" data-line-number="1">fmap<span class="ot"> ::</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> <span class="dt">Compose</span> f g a <span class="ot">-&gt;</span> <span class="dt">Compose</span> f g b</a></code></pre></div>
+<p>This gives us an idea of where to begin when trying to implement <code>fmap</code>. We'll need to introduce the function <code>a -&gt; b</code> and the <code>Compose f g</code> value. We can also use pattern matching to unwrap the <code>f (g a)</code> inside the <code>Compose</code>.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" data-line-number="1">fmap f (<span class="dt">Compose</span> fg) <span class="fu">=</span> _full_solution</a></code></pre></div>
+<p>Armed with the knowledge that we want to change the innermost value <code>a</code>, we will approach the problem by thinking inside-out. This method of working from the inside-out will be reused throughout the implementations and will help us think about implementing these instances.</p>
+<p>The innermost thing we can work with is <code>a</code>, but this is trivial since we know that turning the <code>a</code> into a <code>b</code> can be done by using the function <code>f</code>.</p>
+<p>The next level up we are looking at the <code>g</code>, more specifically <code>g a</code>. So how can we go from a <code>g a</code> to a <code>g b</code>?</p>
+<p>Alarm bells 🚨🚨🚨 should be ringing in your head here because we know <code>g</code> is a <code>Functor</code> and we know how to get a function <code>g a -&gt; g b</code> by using <code>fmap</code>. So we end up with:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" data-line-number="1">fmap f (<span class="dt">Compose</span> fg) <span class="fu">=</span> _full_solution</a>
+<a class="sourceLine" id="cb15-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb15-3" data-line-number="3">    <span class="co">-- gb :: g a -&gt; g b</span></a>
+<a class="sourceLine" id="cb15-4" data-line-number="4">    gb ga <span class="fu">=</span> fmap f ga</a></code></pre></div>
+<p>So now we need to move to the next layer up and figure out how to turn our <code>f (g a)</code> into a <code>f (g b)</code>. Inspecting the types of what we have at our fingertips will reveal how to get past this hurdle:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" data-line-number="1"><span class="ot">fg ::</span> f (g a)     <span class="co">-- The value inside the Compose</span></a>
+<a class="sourceLine" id="cb16-2" data-line-number="2"><span class="ot">gb ::</span> g a <span class="ot">-&gt;</span> g b  <span class="co">-- The function we defined</span></a></code></pre></div>
+<p>Again we see a familiar pattern of trying to access the inner part, in this case we want to access the <code>g a</code> inside of the <code>f</code>. <code>fmap</code> is our friend, once again, and the <code>(a -&gt; b)</code> in this case is specialised to <code>(g a -&gt; g b)</code>. That is to say <code>fmap</code> looks like the following for <code>f</code>:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" data-line-number="1">fmap<span class="ot"> ::</span> (g a <span class="ot">-&gt;</span> g b) <span class="ot">-&gt;</span> f (g a) <span class="ot">-&gt;</span> f (g b)</a></code></pre></div>
+<p>And here's our solution for <code>fmap</code> for the <code>Compose</code> <code>Functor</code>:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" data-line-number="1">fmap f (<span class="dt">Compose</span> fg) <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">$</span> fmap gb fg</a>
+<a class="sourceLine" id="cb18-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb18-3" data-line-number="3">    <span class="co">-- gb :: g a -&gt; g b</span></a>
+<a class="sourceLine" id="cb18-4" data-line-number="4">    gb ga <span class="fu">=</span> fmap f ga</a></code></pre></div>
+<p>We can reduce this to show a cleaner solution by replacing <code>gb</code> with its definition (thank you equational reasoning 🙌🏼):</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb19-1" data-line-number="1">fmap f (<span class="dt">Compose</span> fg) <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">$</span> fmap (fmap f) fg</a></code></pre></div>
+<p>and the unwrapping of <code>Compose</code> with the function <code>unCompose</code>:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" data-line-number="1">fmap f fg <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">$</span> fmap (fmap f) <span class="fu">$</span> (unCompose fg)</a></code></pre></div>
+<p>From there we can see function composition falling into place by removing <code>fg</code>:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb21-1" data-line-number="1">fmap f <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">.</span> fmap (fmap f) <span class="fu">.</span> unCompose</a></code></pre></div>
+<p>To concretise the idea of our higher-kinded composition we can see how the composition of two <code>Functor</code>s is just the two <code>fmap</code> functions coming together and forming our one <code>fmap</code> function for <code>Compose</code>. Neat!</p>
+<p>Let's test out our implementation by choosing the two functors we mentioned earlier: <code>[]</code> and <code>Maybe</code>.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb22-1" data-line-number="1">λ<span class="fu">&gt;</span> unCompose <span class="fu">$</span> (<span class="fu">+</span><span class="dv">1</span>) <span class="fu">&lt;$&gt;</span> <span class="dt">Compose</span> [<span class="dt">Just</span> <span class="dv">1</span>, <span class="dt">Just</span> <span class="dv">2</span>, <span class="dt">Nothing</span>]</a>
+<a class="sourceLine" id="cb22-2" data-line-number="2">[<span class="dt">Just</span> <span class="dv">2</span>, <span class="dt">Just</span> <span class="dv">3</span>, <span class="dt">Nothing</span>]</a></code></pre></div>
+<h2 id="mind-melting-applicative">Mind melting Applicative</h2>
+<p>Going up the chain of typeclasses we will take a look at the composition of <code>Applicative</code>s. Again, we can start off with a similar instance declaration:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" data-line-number="1"><span class="kw">instance</span> (<span class="dt">Applicative</span> f, <span class="dt">Applicative</span> g)</a>
+<a class="sourceLine" id="cb23-2" data-line-number="2">  <span class="ot">=&gt;</span> <span class="dt">Applicative</span> (<span class="dt">Compose</span> f g) <span class="kw">where</span></a></code></pre></div>
+<p>The <code>Applicative</code><a href="https://hackage.haskell.org/package/base-4.11.1.0/docs/Prelude.html#t:Applicative">typeclass</a> has two functions associated with its definition: <code>pure</code> and <code>(&lt;*&gt;)</code> (also <code>liftA2</code>, but we won\'t look at that here). We will go after the easier game first and write the <code>pure</code> implementation. Specialising <code>pure</code> to <code>Compose</code> we get the following function signature:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" data-line-number="1">pure<span class="ot"> ::</span> a <span class="ot">-&gt;</span> <span class="dt">Compose</span> f g a</a></code></pre></div>
+<p>Again, we can work with our intuition of working from the inside-out. So how can we get a <code>g a</code>? You guessed it, <code>pure</code>!</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" data-line-number="1">pure a <span class="fu">=</span> _full_solution</a>
+<a class="sourceLine" id="cb25-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb25-3" data-line-number="3">    <span class="co">-- ga :: g a</span></a>
+<a class="sourceLine" id="cb25-4" data-line-number="4">    ga <span class="fu">=</span> pure a</a></code></pre></div>
+<p>Next, how can we get an <code>f (g a)</code>, pfffttt you got this!</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb26-1" data-line-number="1">pure a <span class="fu">=</span> _full_solution</a>
+<a class="sourceLine" id="cb26-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb26-3" data-line-number="3">    <span class="co">-- fga :: f (g a)</span></a>
+<a class="sourceLine" id="cb26-4" data-line-number="4">    fga <span class="fu">=</span> pure ga</a></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb27-1" data-line-number="1">    <span class="co">-- ga :: g a</span></a>
+<a class="sourceLine" id="cb27-2" data-line-number="2">    ga  <span class="fu">=</span> pure a</a></code></pre></div>
+<p>And to finish it all off we wrap our results in <code>Compose</code>:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb28-1" data-line-number="1">pure a <span class="fu">=</span> <span class="dt">Compose</span> fga</a>
+<a class="sourceLine" id="cb28-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb28-3" data-line-number="3">    <span class="co">-- fga :: f (g a)</span></a>
+<a class="sourceLine" id="cb28-4" data-line-number="4">    fga <span class="fu">=</span> pure ga</a></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb29-1" data-line-number="1">    <span class="co">-- ga :: g a</span></a>
+<a class="sourceLine" id="cb29-2" data-line-number="2">    ga  <span class="fu">=</span> pure a</a></code></pre></div>
+<p>In the same vein as <code>fmap</code> we can work back to a cleaner solution. The first step is to exchange <code>ga</code> for its definition:</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" data-line-number="1">pure a <span class="fu">=</span> <span class="dt">Compose</span> fga</a>
+<a class="sourceLine" id="cb30-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb30-3" data-line-number="3">    fga <span class="fu">=</span> pure (pure a)</a></code></pre></div>
+<p>We can then do the same with <code>fga</code>:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb31-1" data-line-number="1">pure a <span class="fu">=</span> <span class="dt">Compose</span> (pure (pure a))</a></code></pre></div>
+<p>Now we can really see the composition shine by dropping the <code>a</code> and use the composition of these functions to define <code>pure</code>:</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb32-1" data-line-number="1">pure <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">.</span> pure <span class="fu">.</span> pure</a></code></pre></div>
+<p>😍</p>
+<p>Now, here's the part that has tripped up many of us in the past. We'll define <code>(&lt;*&gt;)</code> for <code>Compose</code>. We are going to use a type-hole driven development approach alongside the idea of working from the inside out to converge on the solution for this function. But first, let's look at the type signature:</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb33-1" data-line-number="1"><span class="ot">(&lt;*&gt;) ::</span> <span class="dt">Compose</span> f g (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> <span class="dt">Compose</span> f g a <span class="ot">-&gt;</span> <span class="dt">Compose</span> f g b</a></code></pre></div>
+<p>We can start off by unwrapping the two <code>Compose</code> values:</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb34-1" data-line-number="1"><span class="dt">Compose</span> f <span class="fu">&lt;*&gt;</span> <span class="dt">Compose</span> k <span class="fu">=</span> _full_solution</a></code></pre></div>
+<p>And it's important to keep track of the types we're working with from here:</p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb35-1" data-line-number="1"><span class="ot">f ::</span> f (g (a <span class="ot">-&gt;</span> b))</a>
+<a class="sourceLine" id="cb35-2" data-line-number="2"><span class="ot">k ::</span> f (g a)</a></code></pre></div>
+<p>It's good to also note that when utilising type holes GHC will provide us with relevant bindings in scope, as well.</p>
+<p>Starting from the inner part first we will just consider the <code>g</code> part of the types. If we remove the <code>f</code> we end up with wanting an expression of type:</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb36-1" data-line-number="1">g (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> g a <span class="ot">-&gt;</span> g b</a></code></pre></div>
+<p>Well doesn't <em>that</em> look familiar! So now we know that we will need to work with the <code>(&lt;*&gt;)</code> function that's specific to <code>g</code>.</p>
+<p>What we want to do is to access the <code>g (a -&gt; b)</code> inside the <code>f</code> and supply the <code>(&lt;*&gt;)</code> with its first argument. When we are thinking about getting inside something we should start to think of <code>fmap</code> and that's exactly what we will use:</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb37-1" data-line-number="1"><span class="dt">Compose</span> f <span class="fu">&lt;*&gt;</span> <span class="dt">Compose</span> k <span class="fu">=</span> _full_solution</a>
+<a class="sourceLine" id="cb37-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb37-3" data-line-number="3"><span class="ot">    liftedAp ::</span> _liftedAp</a>
+<a class="sourceLine" id="cb37-4" data-line-number="4">    liftedAp <span class="fu">=</span> fmap (<span class="fu">&lt;*&gt;</span>) f</a></code></pre></div>
+<p>Notice that I have written the type signature as <code>_liftedAp</code> where GHC will be kind enough to tell us what the type of this expression is:</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb38-1" data-line-number="1">• <span class="dt">Couldn&#39;t</span> match expected <span class="kw">type</span> ‘_liftedAp’</a>
+<a class="sourceLine" id="cb38-2" data-line-number="2">  with actual <span class="kw">type</span> ‘f (g a <span class="ot">-&gt;</span> g b)’</a>
+<a class="sourceLine" id="cb38-3" data-line-number="3"><span class="fu">...</span></a></code></pre></div>
+<p>Unfortunately, we can't place this signature here without turning on some extensions so we will leave it as a comment to ensure that we remember the type:</p>
+<div class="sourceCode" id="cb39"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb39-1" data-line-number="1"><span class="dt">Compose</span> f <span class="fu">&lt;*&gt;</span> <span class="dt">Compose</span> k <span class="fu">=</span> _full_solution</a>
+<a class="sourceLine" id="cb39-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb39-3" data-line-number="3">    <span class="co">-- liftedAp :: f (g a -&gt; g b)</span></a>
+<a class="sourceLine" id="cb39-4" data-line-number="4">    liftedAp <span class="fu">=</span> fmap (<span class="fu">&lt;*&gt;</span>) f</a></code></pre></div>
+<p>From here we know that we want to end up with a final value of <code>f (g b)</code>. Looking at <code>liftedAp</code>, we know that if we can lift some <code>g a</code> in then we will get back that <code>f (g b)</code>. So let's look at what we have to work with again:</p>
+<div class="sourceCode" id="cb40"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb40-1" data-line-number="1"><span class="ot">liftedAp ::</span> f (g a <span class="ot">-&gt;</span> g b)</a>
+<a class="sourceLine" id="cb40-2" data-line-number="2"><span class="ot">k        ::</span> f (g a)</a></code></pre></div>
+<p>At this stage, I think we're pros at type tetris and realise that we're working with something that we have seen before. Indeed, this is <code>(&lt;*&gt;)</code> specialised:</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb41-1" data-line-number="1"><span class="co">-- the original definition with &#39;k&#39;, &#39;x&#39; and &#39;y&#39;</span></a>
+<a class="sourceLine" id="cb41-2" data-line-number="2"><span class="co">-- as the type variable names to avoid confusion</span></a>
+<a class="sourceLine" id="cb41-3" data-line-number="3"><span class="ot">(&lt;*&gt;) ::</span> k (x <span class="ot">-&gt;</span> y) <span class="ot">-&gt;</span> k x <span class="ot">-&gt;</span> k y</a></code></pre></div>
+<div class="sourceCode" id="cb42"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb42-1" data-line-number="1"><span class="co">-- the &#39;k&#39; is our f</span></a>
+<a class="sourceLine" id="cb42-2" data-line-number="2"><span class="co">-- the &#39;x&#39; is our g a</span></a>
+<a class="sourceLine" id="cb42-3" data-line-number="3"><span class="co">-- the &#39;y&#39; is our g b</span></a>
+<a class="sourceLine" id="cb42-4" data-line-number="4"><span class="ot">(&lt;*&gt;) ::</span> f (g a <span class="ot">-&gt;</span> g b) <span class="ot">-&gt;</span> f (g a) <span class="ot">-&gt;</span> f (g b)</a></code></pre></div>
+<p>Noting that we also have to wrap it up in a <code>Compose</code> in the end, we get the solution:</p>
+<div class="sourceCode" id="cb43"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb43-1" data-line-number="1"><span class="dt">Compose</span> f <span class="fu">&lt;*&gt;</span> <span class="dt">Compose</span> k <span class="fu">=</span> <span class="dt">Compose</span> <span class="fu">$</span> liftedAp <span class="fu">&lt;*&gt;</span> k</a>
+<a class="sourceLine" id="cb43-2" data-line-number="2">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb43-3" data-line-number="3"><span class="ot">    liftedAp ::</span> f (g a <span class="ot">-&gt;</span> g b)</a>
+<a class="sourceLine" id="cb43-4" data-line-number="4">    liftedAp <span class="fu">=</span> fmap (<span class="fu">&lt;*&gt;</span>) f</a></code></pre></div>
+<p>An astute reader will notice that this can be written differently knowing that <code>fmap</code> can be written using its infix operator <code>&lt;$&gt;</code>:</p>
+<div class="sourceCode" id="cb44"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb44-1" data-line-number="1"><span class="dt">Compose</span> <span class="fu">$</span> (<span class="fu">&lt;*&gt;</span>) <span class="fu">&lt;$&gt;</span> f <span class="fu">&lt;*&gt;</span> k</a></code></pre></div>
+<p>Which gives us the intuition that we're lifting the <code>(&lt;*&gt;)</code> over our <code>f</code>s and applying it to our <code>g</code>s.</p>
+<p>Let's look at another concrete example using <code>[]</code> and <code>Maybe</code>:</p>
+<div class="sourceCode" id="cb45"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb45-1" data-line-number="1">λ<span class="fu">&gt;</span> unCompose <span class="fu">$</span> <span class="dt">Compose</span> [<span class="dt">Just</span> (<span class="fu">+</span><span class="dv">1</span>), <span class="dt">Just</span> (<span class="fu">+</span><span class="dv">2</span>), <span class="dt">Nothing</span>] <span class="fu">&lt;*&gt;</span> <span class="dt">Compose</span> [<span class="dt">Just</span> <span class="dv">1</span>, <span class="dt">Just</span> <span class="dv">2</span>, <span class="dt">Nothing</span>]</a></code></pre></div>
+<div class="sourceCode" id="cb46"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb46-1" data-line-number="1">[ <span class="dt">Just</span> <span class="dv">2</span></a>
+<a class="sourceLine" id="cb46-2" data-line-number="2">, <span class="dt">Just</span> <span class="dv">3</span></a>
+<a class="sourceLine" id="cb46-3" data-line-number="3">, <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb46-4" data-line-number="4">, <span class="dt">Just</span> <span class="dv">3</span></a>
+<a class="sourceLine" id="cb46-5" data-line-number="5">, <span class="dt">Just</span> <span class="dv">4</span></a>
+<a class="sourceLine" id="cb46-6" data-line-number="6">, <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb46-7" data-line-number="7">, <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb46-8" data-line-number="8">, <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb46-9" data-line-number="9">, <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb46-10" data-line-number="10">]</a></code></pre></div>
+<h2 id="conclusion">Conclusion</h2>
+<p>I hope this provided some insight on how we can compose higher-kinds. In turn we were able to talk about composing typeclasses, specifically <code>Functor</code> and <code>Applicative</code>. The beauty is that now we can use <code>fmap</code>, <code>pure</code>, and <code>(&lt;*&gt;)</code> on <em>any two</em> <code>Functor</code>s or <code>Applicative</code>s!</p>
+<p>If you want to take this learning further, I would encourage you to implement <code>Foldable</code> and <code>Traversable</code> for <code>Compose</code>. Once you have done this, investigate why you cannot compose two <code>Monad</code>s and then you will be ready to have fun with Monad Transformers! (Robots in Disguise)</p>
+<p><strong>Shoutouts:</strong> to <a href="http://reasonablypolymorphic.com/">Sandy</a> (who's got excellent content on Haskell too btw), and Joe (\@jkachmar on FPChat) for helping me proof-read and polish this upe</p>
+
+        <br>
+        <br>
+
+        <!--Share buttons-->
+        <div class="social-buttons">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
+</article>
+
+</div>
+
+<footer>
+    Built with Haskell ❤️
+</footer>
+
+<link href='https://fonts.googleapis.com/css?family=Quicksand:300,400' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+<script src="/js/main.js"></script>
+</body>
+</html>
