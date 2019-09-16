@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head profile="http://www.w3.org/2005/10/profile">
+    <meta charset="UTF-8">
+    <meta name="description" content="Functionally Resilient">
+    <meta name="author" content="Fintan Halpenny">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <meta name="Fintan Halpenny" content="Fintan Halpenny, fintan.halpenny@gmail.com">
+    <title>Advent of Schemes</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a id="beacon" href="/">
+                <div id="home-text"> ΛⱯ </div>
+            </a>
+        </nav>
+    
+        <div class="right-sidebar">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+        <div id="theme-button">DAY</div>
+        </div>
+    </header>
+
+<div id="page">
+    <div class="wrapper">
+        <div class="masthead">
+            <span class="title">
+                Advent of Schemes
+            </span>
+            <br>
+
+            <br>
+            <span class="byline">by Fintan Halpenny</span>
+            <br>
+            <span class="date">Jan 2, 2019</span>
+            <br>
+            <div class="metadata">
+            </div>
+        </div>
+    </div>
+    <article class="post">
+        <p>If you hang around fellow Haskeller/Scala head, Greg Pfeil (a.k.a sellout), enough you will hear about recursion schemes, as well as some other abstract concepts but those are not the topic of the day. No, today we will join the conversation and talk about recursion schemes as well.</p>
+<p>I have dabbled with the concept for a long time. Due to being a colleague of Greg's at <a href="https://formation.ai/">Formation</a> I had to familiarise myself somewhat with the concepts. But what annoyed me was that I didn't always get a full understanding of it. I could be given a jumping off point to work with, but could never arrive at the initial ideas myself.</p>
+<p>On the lookout for the perfect opportunity to add some skill points to my recursion shcemes knowledge I decided to tackle the <a href="https://adventofcode.com/">Advent of Code</a> challenges but force myself to use recursion schemes. Granted I am very slow at solving these problems, and even slower at writing and publishing them. I hope everyone enjoyed the holidays!</p>
+<p>So I started Day 1, armed with the <a href="https://github.com/sellout/yaya">yaya</a> library, my point of contact, @sellout, some tunes on Spotify (listen to some Jacques Greene and The Blaze), and the thirst for knowledge.</p>
+<p>Before I discuss Day 1 though, I would like to explore my thoughts on recursion schemes that fell out from this attempt and speaking with Greg. Recursion schemes seem to fall into the space of algorithm implementation or business logic. So when we look to use them we have some problem we are trying to solve. I think this is why I found previously read literature on the topic frustrating. One would usually find how to recover natural numbers or lists from pattern functors. While these are useful concepts, I saw a massive valley between these ideas and actually moving towards using recursion schemes. This is why I felt the advent of code was the perfect medium to marry exploring recursion schemes and trying to solve problems.</p>
+<p>So as I've said, recursion schemes tackle problem solving. They are an abstraction of recursion in data structures and computations. With data structures they factor out the recursion we would tend to reach for and we gain pattern functors. For example we will heavily use the <code>List</code> pattern functor <code>XNor</code>. For computations we abstract folding and unfolding by utilising the fact that these computations can be done for any <code>Functor</code>.</p>
+<p>Already we are off to a good start because we have gained two concepts for free. Many pattern functors already exist and it easy to define one for your domain, and this in turn gives us a cornucopia of folds and unfolds for free. What does that leave us? The stuff we care about, our business logic or algorithm implementation.</p>
+<p>We take our pattern functor we believe matches the structure we would want to work with, and attempt to write the function definition as simple as possible. I have personally found myself starting with the smallest assumption I can make about what I need and adding new power or functionality as I see fit. We then massage these implementations into algebras or coalgebras that can used in our folds/unfolds. As I explore recursion schemes further I hope to keep these ideas in mind and refine them to gain a full understanding of the concepts.</p>
+<p>Without further ado, lets see how we can solve Day 1 of AOC with recursion schemes!</p>
+<h2 id="day-1-problem">Day 1 Problem</h2>
+<p>To understand what we need to do, let's discuss the problem first. We are given some input that consists of a series of numbers separated by newline characters. Each number is prefixed by a <code>+</code> or <code>-</code> to show whether is positive or negative.</p>
+<p>For example:</p>
+<pre><code>+1
+-2
++3</code></pre>
+<p>The first part of Day 1 is to write a function that can read this input and sum them. Thus the answer to the above example would be <code>2</code>.</p>
+<p>The second part of Day 1 is to write a function that while summing the input can detect if the current sum has been detected before. If the end of the series of numbers has been reached we should loop back over them until we reach a repeated frequency. In the example input our answer would be <code>1</code>. To demonstrate:</p>
+<pre><code>0 + 1 = 1
+1 - 2 = -1
+-1 + 3 = 2
+2 + 1 = 3
+3 - 2 = 1 -- we saw 1 when we did 0 + 1</code></pre>
+<p>So our stream of numbers was: <code>1, -2, 3, 1, -2</code>.</p>
+<h2 id="some-initial-imports">Some Initial Imports</h2>
+<p>Not much to see here other than some general set up.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="ot">{-# LANGUAGE FlexibleContexts #-}</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="ot">{-# LANGUAGE LambdaCase       #-}</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3"><span class="ot">{-# LANGUAGE TypeApplications #-}</span></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5"><span class="kw">module</span> <span class="dt">Frequencies</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb3-7" data-line-number="7"><span class="kw">import</span> <span class="dt">Control.Applicative</span> ((&lt;|&gt;))</a>
+<a class="sourceLine" id="cb3-8" data-line-number="8"><span class="kw">import</span> <span class="dt">Control.Monad.Except</span></a>
+<a class="sourceLine" id="cb3-9" data-line-number="9"><span class="kw">import</span> <span class="dt">Control.Monad.State</span></a>
+<a class="sourceLine" id="cb3-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb3-11" data-line-number="11"><span class="kw">import</span> <span class="dt">Data.Attoparsec.ByteString</span></a>
+<a class="sourceLine" id="cb3-12" data-line-number="12"><span class="kw">import</span> <span class="dt">Data.ByteString</span> (<span class="dt">ByteString</span>)</a>
+<a class="sourceLine" id="cb3-13" data-line-number="13"><span class="kw">import</span> <span class="dt">Data.Set</span> (<span class="dt">Set</span>)</a>
+<a class="sourceLine" id="cb3-14" data-line-number="14"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Set</span> <span class="kw">as</span> <span class="dt">Set</span></a>
+<a class="sourceLine" id="cb3-15" data-line-number="15"><span class="kw">import</span> <span class="dt">Text.Parser.Char</span> (char, digit, newline)</a>
+<a class="sourceLine" id="cb3-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb3-17" data-line-number="17"><span class="kw">import</span> <span class="dt">Yaya</span></a>
+<a class="sourceLine" id="cb3-18" data-line-number="18"><span class="kw">import</span> <span class="dt">Yaya.Control</span></a>
+<a class="sourceLine" id="cb3-19" data-line-number="19"><span class="kw">import</span> <span class="dt">Yaya.Data</span></a>
+<a class="sourceLine" id="cb3-20" data-line-number="20"><span class="kw">import</span> <span class="dt">Yaya.Either</span></a>
+<a class="sourceLine" id="cb3-21" data-line-number="21"><span class="kw">import</span> <span class="dt">Yaya.Unsafe.Data</span> () <span class="co">-- imported for orphan instances</span></a>
+<a class="sourceLine" id="cb3-22" data-line-number="22"><span class="kw">import</span> <span class="dt">Yaya.Zoo</span></a></code></pre></div>
+<h2 id="parsing">Parsing</h2>
+<p>I've left the parsing of the input upto <a href="http://hackage.haskell.org/package/attoparsec"><code>attoparsec</code></a> since it's lightweight. This does the heavy lifting of grabbing our numbers and turning them into positive or negative numbers.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="co">-- | Parse a `+` token.</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="ot">plus ::</span> <span class="dt">Parser</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">plus <span class="fu">=</span> char <span class="ch">&#39;+&#39;</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="co">-- | Parse a `-` token.</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="ot">minus ::</span> <span class="dt">Parser</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">minus <span class="fu">=</span> char <span class="ch">&#39;-&#39;</span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="co">-- | Parse a sign (+/-) followed by its digits.</span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10"><span class="ot">number ::</span> <span class="dt">Parser</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">number <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb4-12" data-line-number="12">  sign <span class="ot">&lt;-</span> try (minus <span class="fu">&gt;&gt;</span> pure negate) <span class="fu">&lt;|&gt;</span> (plus <span class="fu">&gt;&gt;</span> pure id)</a>
+<a class="sourceLine" id="cb4-13" data-line-number="13">  sign <span class="fu">.</span> read <span class="fu">&lt;$&gt;</span> many1 digit</a>
+<a class="sourceLine" id="cb4-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb4-15" data-line-number="15"><span class="co">-- | Parse a newline separated string of &#39;number&#39;.</span></a>
+<a class="sourceLine" id="cb4-16" data-line-number="16"><span class="ot">numbers ::</span> <span class="dt">Parser</span> [<span class="dt">Int</span>]</a>
+<a class="sourceLine" id="cb4-17" data-line-number="17">numbers <span class="fu">=</span> number <span class="ot">`sepBy`</span> newline</a></code></pre></div>
+<h2 id="algebraic">Algebraic!</h2>
+<p>Here is our first function that defines an algebra for summing numbers.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">sum&#39; ::</span> <span class="dt">Algebra</span> (<span class="dt">XNor</span> <span class="dt">Int</span>) <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">sum&#39; <span class="fu">=</span> \<span class="kw">case</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">  <span class="dt">Both</span> x y <span class="ot">-&gt;</span> x <span class="fu">+</span> y</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">  <span class="dt">Neither</span>  <span class="ot">-&gt;</span> <span class="dv">0</span></a></code></pre></div>
+<p>This <code>Algebra</code> serves as the summing of our incoming frequencies. XNor acts as our &quot;pattern functor&quot; which is the pattern functor for lists, i.e. <code>[a]</code>. We can see this by looking at the definition of <code>XNor</code> from <code>yaya</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1">  <span class="kw">data</span> <span class="dt">XNor</span> a b</a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">    <span class="fu">=</span> <span class="dt">Neither</span></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">    <span class="fu">|</span> <span class="dt">Both</span> a b</a></code></pre></div>
+<p>The case of <code>Neither</code> acts as the base case <code>[]</code> (or <code>Nil</code>). While <code>Both</code> acts as <code>a : [a]</code> (or <code>Cons</code>). It contains the head of the list and the tail of the list.</p>
+<p><code>Algebra f a</code> is an alias for <code>f a -&gt; a</code>, so we can translate the original type signature to <code>XNor Int Int -&gt; Int</code>.</p>
+<p>The <code>x</code> can be seen as the head of the list, our current element, and the <code>y</code> being the accumulated sum, from the tail upwards.</p>
+<p><code>Neither</code> then acts as the base case of our recrsion and thus we can return 0.</p>
+<p>This <code>Algebra</code> can then be passed to <code>cata</code> which will process things from the back of the list, read leaf of computation, up to towards the head.</p>
+<p>We can already see the usefulness of expressing our functions via pattern functors and simple functions. We are simply expressing the semantics of summation when we write <code>x + y</code>, and <code>0</code> acting as our base element. We did not have to talk about recursion and conflate our logic.</p>
+<p>This captures everything we need for part 1, but we will demonstrate the computation later. Before that we will discuss our other functions for solving part 2.</p>
+<h2 id="again-and-again-and-again-and-...">Again, and Again, and Again, and ...</h2>
+<p>To build up our solution for part 2 we need to solve the issue of repeating elements. When we consider repeating elements we must think about how we need <em>at least</em> one element to repeat. That means we will be dealing with a <code>NonEmptyList</code>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="ot">repeatConcat ::</span> <span class="dt">Coalgebra</span> ((,) a) (<span class="dt">NonEmptyList</span> a, <span class="dt">NonEmptyList</span> a)</a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">repeatConcat (orig, current) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">  <span class="kw">case</span> project current <span class="kw">of</span></a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">    <span class="dt">Only</span> a     <span class="ot">-&gt;</span> (a, (orig, orig))</a>
+<a class="sourceLine" id="cb7-5" data-line-number="5">    <span class="dt">Indeed</span> a t <span class="ot">-&gt;</span> (a, (orig, t))</a></code></pre></div>
+<p>This <code>Coalgebra</code> serves as taking the <code>NonEmptyList</code> and repeating it, followed by concatenating them together.</p>
+<p>This can be visualised as:</p>
+<ul>
+<li>Given a list: 1, 2, 3, 4</li>
+<li>Results in: 1, 2, 3, 4, 1, 2, 3, 4, ...</li>
+</ul>
+<p><code>NonEmptyList a</code> is a type alias for <code>Mu (AndMaybe a)</code>. There are two things we need to address here, so let's talk about <code>AndMaybe</code> first.</p>
+<p><code>AndMaybe</code> is our pattern functor and acts as, you guessed it, the pattern functor for non-empty lists. We can understand this by looking at its definition:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">data</span> <span class="dt">AndMaybe</span> a b</a>
+<a class="sourceLine" id="cb8-2" data-line-number="2">  <span class="fu">=</span> <span class="dt">Only</span> a</a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">  <span class="fu">|</span> <span class="dt">Indeed</span> a b</a></code></pre></div>
+<p>We can read this as:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1">a <span class="ot">`AndMaybe`</span> b</a></code></pre></div>
+<p>We are always guaranteed an <code>a</code> and possibly a <code>b</code>. There is a guaranteed item in <code>Only</code>, and then <code>Indeed</code> looks similar to <code>Both</code> from <code>XNor</code>, so the head, and the rest of the list.</p>
+<p>A usual construction of NonEmpty is that we have a guaranteed <code>head</code> of the list and the rest of the list. In this case <code>Only</code> actually acts as the guaranteed <code>last</code> of the list, and <code>Indeed</code> as the front (<code>init</code>) of the list.</p>
+<p>We also introduced <code>Mu</code> when inspecting <code>NonEmptyList</code>. Let's gain some intuition for what it is by saying that the type alias <code>List a</code> can be defined as <code>Mu (XNor a)</code>. <code>Mu</code> is the fixed-point operator for finite/inductive data structures. This means we can build up a <code>List</code>, embedding our pattern functor, <code>XNor</code> in <code>Mu</code> and this expresses that we have a finite computation. We can do the same for <code>NonEmptyList</code> by embedding <code>AndMaybe a</code> into <code>Mu</code>.</p>
+<p>At this point we can unpack what our type signature means:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1">      <span class="dt">Coalgebra</span> ((,) a) (<span class="dt">NonEmptyList</span> a, <span class="dt">NonEmptyList</span> a)</a>
+<a class="sourceLine" id="cb10-2" data-line-number="2">  <span class="fu">===</span> (<span class="dt">NonEmptyList</span> a, <span class="dt">NonEmptyList</span> a) <span class="ot">-&gt;</span> (a, (<span class="dt">NonEmptyList</span> a, <span class="dt">NonEmptyList</span> a))</a></code></pre></div>
+<p>We keep the original list as our first element in the <code>(,)</code>, and the current <code>NonEmptyList</code> that we are inspecting. Calling <code>project</code> lets us unwrap one layer of <code>Mu</code> and this gives us back an <code>AndMaybe</code> value that we case on.</p>
+<p>If we have <code>Only</code> one item we return the last item of the list and the original list again, i.e. we've reached the end so now we repeat.</p>
+<p>In the case where we have <code>Indeed</code> we unpack the head and pass on our tail.</p>
+<p>We always keep the original to refer to it once we get to the end of the list.</p>
+<h2 id="jto-just-the-one">JTO (Just the One)</h2>
+<p>Since our input will be a list of numbers we want to write a function that will give us a <code>NonEmptyList</code> from a <code>List</code>.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="ot">nonEmpty ::</span> <span class="dt">Algebra</span> (<span class="dt">XNor</span> a) (a <span class="ot">-&gt;</span> <span class="dt">NonEmptyList</span> a)</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">nonEmpty <span class="fu">=</span> \<span class="kw">case</span></a>
+<a class="sourceLine" id="cb11-3" data-line-number="3">  <span class="dt">Neither</span>  <span class="ot">-&gt;</span> embed <span class="fu">.</span> <span class="dt">Only</span></a>
+<a class="sourceLine" id="cb11-4" data-line-number="4">  <span class="dt">Both</span> a f <span class="ot">-&gt;</span> embed <span class="fu">.</span> flip <span class="dt">Indeed</span> (f a)</a></code></pre></div>
+<p>As we saw in <code>sum'</code> we were representing a list through its pattern functor <code>XNor</code>, which we also use here.</p>
+<p>And in <code>repeatConcat</code> we looked through <code>NonEmptyList</code> and how it was an alias for <code>Mu (AndMaybe a)</code> our pattern functor for non-empty lists and the fixed-point operator for finite data structures.</p>
+<p>So lets look at what this <code>Algebra</code> breaks out into:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" data-line-number="1">      <span class="dt">Algebra</span> (<span class="dt">XNor</span> a) (a <span class="ot">-&gt;</span> <span class="dt">NonEmptyList</span> a)</a>
+<a class="sourceLine" id="cb12-2" data-line-number="2">  <span class="fu">===</span> <span class="dt">XNor</span> a (a <span class="ot">-&gt;</span> <span class="dt">NonEmptyList</span> a) <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> <span class="dt">NonEmptyList</span> a)</a></code></pre></div>
+<p>So, given an <code>XNor</code> of <code>a</code>s as the items, and <code>a -&gt; NonEmptyList a</code> as the tail or continuation of the list, we get back a function from <code>a -&gt; NonEmptyList a</code>.</p>
+<p>This comes across as intuitive, since we can turn any list into a non-empty list as long as provide at lease <em>one</em> item. Our initial <code>a</code> from the function!</p>
+<p>In the case of <code>Neither</code>, our function will be <code>Only</code>. So we take that <code>a</code> passed in and return the singleton, non-empty list.</p>
+<p>In the case of <code>Both</code>, we have the head of our list, and the <code>NonEmptyList</code> being built up from our <code>Only</code> element. So, we apply the continuation and it now acts as the head of our <code>Indeed</code> non-empty list. Again, waiting for the next continuation, when we finally call this function.</p>
+<h2 id="gently-down-the-stream">Gently Down the Stream</h2>
+<p>We are starting to move out of the territory of writing basic functions and into the territory of using these functions in folds and unfolds. The task at hand being able to create a <code>Stream</code> of <code>Int</code>s from a <code>List</code> of <code>Int</code>s.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" data-line-number="1"><span class="ot">makeStream ::</span> <span class="dt">List</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Stream</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb13-2" data-line-number="2">makeStream l <span class="fu">=</span> <span class="kw">case</span> project l <span class="kw">of</span></a>
+<a class="sourceLine" id="cb13-3" data-line-number="3">  <span class="dt">Neither</span>  <span class="ot">-&gt;</span> ana duplicate <span class="dv">0</span></a>
+<a class="sourceLine" id="cb13-4" data-line-number="4">  <span class="dt">Both</span> h t <span class="ot">-&gt;</span> ana repeatConcat (duplicate <span class="fu">$</span> (cata nonEmpty t h))</a>
+<a class="sourceLine" id="cb13-5" data-line-number="5">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb13-6" data-line-number="6"><span class="ot">    duplicate ::</span> <span class="dt">Coalgebra</span> ((,) a) a</a>
+<a class="sourceLine" id="cb13-7" data-line-number="7">    duplicate i <span class="fu">=</span> (i, i)</a></code></pre></div>
+<p>Our input is a <code>List Int</code> which is a type alias for <code>Mu (XNor a)</code>. At this point we know by now that combining the pattern functor for lists, <code>XNor</code> and <code>Mu</code> we are saying we have a finite list structure.</p>
+<p>Our output is <code>Stream Int</code>, which is a type alias for <code>Nu ((,) a)</code>. This particular pattern we have not come across yet. So lets see what these two things in tandem entail.</p>
+<p><code>Nu</code> is the dual fixed-point operator to <code>Mu</code>. As its dual it means that it describes infinite/co-inductive data structures. So when we combine <code>Nu</code> with pattern functors, we are saying that we have potentially infinite data. This is very true for our case of repeating a list.</p>
+<p><code>(,) a</code> is chosen as the pattern functor because it naturally represents an infinite stream of data. We have the head of the stream, the first element of the tuple, and the rest of the stream, the second element of the tuple.</p>
+<p>We could anaolgise this to a manual recursive definition of a stream:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" data-line-number="1"><span class="kw">data</span> <span class="dt">Stream</span> <span class="fu">=</span> {<span class="ot"> element ::</span> a,<span class="ot"> more ::</span> <span class="dt">Stream</span> a }</a></code></pre></div>
+<p>Another way of looking at it is that streams are lists without a Nil case.</p>
+<p>With this explanation out of the way we can break down how to implementation works. We first <code>project</code> our list <code>l</code> to unwrap one layer of our <code>List</code>. In the case of <code>Neither</code> we make a &quot;safe&quot; move of producing a stream of 0s. We cannot do much with an empty list, since it is undefined for <code>Stream</code> data, but it works in our larger problem because adding 0 is no-op.</p>
+<p>In the case of <code>Both</code> we utilise our <code>nonEmpty</code> algebra to convert our <code>List</code> into a <code>NonEmptyList</code>. We duplicate this result and infinitely generate, via <code>ana</code>, a <code>Stream</code> of <code>NonEmptyList</code>s using <code>repeatConcat</code>.</p>
+<h2 id="finding-the-repeat-in-a-haystack">Finding the Repeat in a Haystack</h2>
+<p>This our final coalgebra that implements finding the repeating frequency in a stream of input.</p>
+<p>We can break up the problem into its constituent parts:</p>
+<ul>
+<li>An input of numbers that we need to sum. This is represented by a <code>Stream Int</code>.</li>
+<li>The frequencies we have previously seen while inspecting the stream of numbers. This is represented by a <code>Set Int</code>.</li>
+<li>The current sum, or tally, we have while inspecting the stream of numbers.</li>
+</ul>
+<p>The output is the first repeated element we find. But the thing is, we might actually never find a repeating element. Consider the input of a single <code>+1</code>. We will forever compute the natural numbers until we overflow, since we are using <code>Int</code>. Thus, we split our computation into two. We either return a repeated frequency, or we continue our computation.</p>
+<ul>
+<li>This split is represented by <code>Either Int (Int, Set Int, Stream Int)</code> where our <code>Left</code> case short-circuits the computation and returns our result, while the <code>Right</code> case continues our computation.</li>
+</ul>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" data-line-number="1"><span class="ot">repeatCoalgebra ::</span> <span class="dt">Coalgebra</span> (<span class="dt">Either</span> <span class="dt">Int</span>) (<span class="dt">Int</span>, <span class="dt">Set</span> <span class="dt">Int</span>, <span class="dt">Stream</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb15-2" data-line-number="2">repeatCoalgebra (tally, env, stream) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb15-3" data-line-number="3">  <span class="kw">let</span> (currentElem, restOfStream) <span class="fu">=</span> project stream</a>
+<a class="sourceLine" id="cb15-4" data-line-number="4">      result <span class="fu">=</span> tally <span class="fu">+</span> currentElem</a>
+<a class="sourceLine" id="cb15-5" data-line-number="5">  <span class="kw">in</span> <span class="kw">if</span> result <span class="ot">`Set.member`</span> env</a>
+<a class="sourceLine" id="cb15-6" data-line-number="6">     <span class="kw">then</span> <span class="dt">Left</span> result</a>
+<a class="sourceLine" id="cb15-7" data-line-number="7">     <span class="kw">else</span> <span class="dt">Right</span> <span class="fu">$</span> (result, Set.insert result env, restOfStream)</a></code></pre></div>
+<p>As we mentioned above, we don't necessarily know how long this algorithm can go on for so we describe it as a <code>Coalgebra</code> and provide it a seed. The seed if made up of our constituent parts of: a tally, the previously seen frequencies, and the stream of numbers.</p>
+<p>The first thing we want to do is inspect the head of the stream, this can be done by using <code>project</code> to split the stream into its head and its tail.</p>
+<p>We can then get our latest tally by summing our current element, the head of the stream, with our aggregated tally, the seed.</p>
+<p>We then check that our <code>result</code> is a member of the <code>Set</code> of previously seen tallies. If it is, then great! We found our result and short-circuit with <code>Left</code>. If not, we continue the computation updating our seed values, and returning with <code>Right</code>.</p>
+<p>Lets take a moment to consider the semantics of <code>Either</code> in this case, because it's important to note how its acting and its general use in recursion schemes.</p>
+<p>When we think about <code>Either</code> we generally think about short-circuiting behaviour. This is drilled into us when we write the <code>Functor</code>, <code>Applicative</code>, and <code>Monad</code> instances. When we see the <code>Left</code> case we propagate this result. In our case it's the natural pattern functor for partial functions. This can be seen in the newtype defined in <code>yaya</code>, <code>Partial</code>. It is defined as <code>Partial a = Nu (Either a)</code>. The <code>Partial</code> relates to the short-circuiting. We <em>may</em> get a result and this will be passed back as a <code>Left</code> value. Or we may just keep computing forever with a <code>Right</code> value.</p>
+<p>In our case this is very true given our previous problem case of having a single input of <code>+1</code>.</p>
+<h2 id="why-do-we-fall-bruce">Why do we fall, Bruce?</h2>
+<p>While trying to figure out how to solve part 2 I wrote the following function. It has a couple of problems and it's left as an exercise to the reader to see what they are.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" data-line-number="1"><span class="ot">repeatAlgebra ::</span> <span class="dt">XNor</span> <span class="dt">Int</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">State</span> (<span class="dt">Set</span> <span class="dt">Int</span>) (<span class="dt">Either</span> <span class="dt">Int</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb16-2" data-line-number="2">repeatAlgebra <span class="fu">=</span> \<span class="kw">case</span></a>
+<a class="sourceLine" id="cb16-3" data-line-number="3">  <span class="dt">Both</span> currentElement tally <span class="ot">-&gt;</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb16-4" data-line-number="4">    <span class="kw">let</span> result <span class="fu">=</span> currentElement <span class="fu">+</span> tally</a>
+<a class="sourceLine" id="cb16-5" data-line-number="5">    env <span class="ot">&lt;-</span> get</a>
+<a class="sourceLine" id="cb16-6" data-line-number="6">    <span class="kw">if</span> result <span class="ot">`Set.member`</span> env</a>
+<a class="sourceLine" id="cb16-7" data-line-number="7">       <span class="kw">then</span> pure <span class="fu">$</span> <span class="dt">Left</span> result</a>
+<a class="sourceLine" id="cb16-8" data-line-number="8">       <span class="kw">else</span> put (Set.insert result env) <span class="fu">&gt;&gt;</span> pure (<span class="dt">Right</span> result)</a>
+<a class="sourceLine" id="cb16-9" data-line-number="9">  <span class="dt">Neither</span> <span class="ot">-&gt;</span> pure (<span class="dt">Right</span> <span class="dv">0</span>)</a></code></pre></div>
+<h2 id="folding-it-all-together">Folding it All Together</h2>
+<p>Our answer to part 1 is implemented in <code>frequency</code>. We parse our list of numbers and use the combination of <code>cata</code> and our <code>sum'</code> algebra to find the answer. We simply explode if our parsing fails.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" data-line-number="1"><span class="ot">frequency ::</span> <span class="dt">ByteString</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb17-2" data-line-number="2">frequency <span class="fu">=</span> either (error <span class="fu">.</span> show) id <span class="fu">.</span> fmap (cata sum&#39;) <span class="fu">.</span> parseOnly numbers</a></code></pre></div>
+<p>Our answer to part 2 is implemented in <code>findRepeat</code>. This is the helper to run our <code>repeatCoalgebra</code>. It uses <code>ana</code> to unfold our seed values <code>(0, {0}, makeStream numbers)</code> and uses the <code>runToEnd</code> fold to evaluate our result to get our final result.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" data-line-number="1"><span class="ot">findRepeat ::</span> <span class="dt">ByteString</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb18-2" data-line-number="2">findRepeat <span class="fu">=</span> either (error <span class="fu">.</span> show) id</a>
+<a class="sourceLine" id="cb18-3" data-line-number="3">           <span class="fu">.</span> fmap (runToEnd <span class="fu">.</span> runner)</a>
+<a class="sourceLine" id="cb18-4" data-line-number="4">           <span class="fu">.</span> parseOnly numbers</a>
+<a class="sourceLine" id="cb18-5" data-line-number="5">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb18-6" data-line-number="6"><span class="ot">    runner ::</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">Nu</span> (<span class="dt">Either</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb18-7" data-line-number="7">    runner ns <span class="fu">=</span> ana repeatCoalgebra (<span class="dv">0</span>, Set.singleton <span class="dv">0</span>, makeStream <span class="fu">$</span> cata embed ns)</a></code></pre></div>
+<p>So there we have it. Our first day of Advent of Code implemented using recursion schemes and some quick parser functions. I hope this helps bridge the gap between defining natural numbers using recursion schemes and actually solving problems.</p>
+<p>You can follow the rest of my Advent of Code antics on my <a href="https://github.com/FintanH/aocrc">github</a>. They'll be coming through slow and steady! You can feel free to contact with me with any feedback or questions :)</p>
+
+        <br>
+        <br>
+
+        <!--Share buttons-->
+        <div class="social-buttons">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
+</article>
+
+</div>
+
+<footer>
+    Built with Haskell ❤️
+</footer>
+
+<link href='https://fonts.googleapis.com/css?family=Quicksand:300,400' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+<script src="/js/main.js"></script>
+</body>
+</html>

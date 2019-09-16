@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head profile="http://www.w3.org/2005/10/profile">
+    <meta charset="UTF-8">
+    <meta name="description" content="Functionally Resilient">
+    <meta name="author" content="Fintan Halpenny">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <meta name="Fintan Halpenny" content="Fintan Halpenny, fintan.halpenny@gmail.com">
+    <title>Sneaky Implicit Mutation</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a id="beacon" href="/">
+                <div id="home-text"> ΛⱯ </div>
+            </a>
+        </nav>
+    
+        <div class="right-sidebar">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+        <div id="theme-button">DAY</div>
+        </div>
+    </header>
+
+<div id="page">
+    <div class="wrapper">
+        <div class="masthead">
+            <span class="title">
+                Sneaky Implicit Mutation
+            </span>
+            <br>
+
+            <img class="post-image" src="/images/magnifying-glass.png">
+            <br>
+            <span class="byline">by Fintan Halpenny</span>
+            <br>
+            <span class="date">Dec 26, 2017</span>
+            <br>
+            <div class="metadata">
+            </div>
+        </div>
+    </div>
+    <article class="post">
+        <p>In this short post I wanted to go through a wall I ran into (head first) and how I eventually was told how to run around it instead. Thank you so much \@joncfoo in the #haskell channel of <a href="https://fpchat-invite.herokuapp.com/">fpchat Slack</a>!</p>
+<p>My task seemed simple at first. I wanted to write to a temporary file, create a <code>conduit</code> <code>Source</code> from the handle and check that <code>bracketP</code> did its clean up job and I read back the correct bytes. The handle was being closed so hooray for that! But I kept seeing this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="dt">Falsifiable</span> (after <span class="dv">1</span> test)<span class="fu">:</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb1-3" data-line-number="3"><span class="st">&quot;a&quot;</span> <span class="fu">/=</span> <span class="st">&quot;&quot;</span></a></code></pre></div>
+<p>What the hell? Why am I getting back no data? I decided to write a stack script to replicate this test on a smaller case:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="ot">#!/usr/bin/env stack</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3"><span class="kw">import</span>           <span class="dt">Data.Conduit</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4"><span class="kw">import</span>           <span class="dt">Data.Conduit.Binary</span></a>
+<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Conduit.List</span> <span class="kw">as</span> <span class="dt">CL</span></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.ByteString</span> <span class="kw">as</span> <span class="dt">B</span></a>
+<a class="sourceLine" id="cb2-7" data-line-number="7"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.ByteString.Char8</span> <span class="kw">as</span> <span class="dt">BC</span></a>
+<a class="sourceLine" id="cb2-8" data-line-number="8"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">System.IO</span> <span class="kw">as</span> <span class="dt">IO</span></a>
+<a class="sourceLine" id="cb2-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb2-10" data-line-number="10"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb2-11" data-line-number="11">main <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12">  <span class="kw">let</span> s <span class="fu">=</span> <span class="st">&quot;a&quot;</span></a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">      bytes <span class="fu">=</span> BC.pack s</a>
+<a class="sourceLine" id="cb2-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">  handle <span class="ot">&lt;-</span> <span class="dt">IO</span><span class="fu">.</span>openFile <span class="st">&quot;streaming_test.txt&quot;</span> <span class="dt">IO</span><span class="fu">.</span><span class="dt">ReadWriteMode</span></a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">  _ <span class="ot">&lt;-</span> <span class="dt">IO</span><span class="fu">.</span>hSetBuffering handle <span class="dt">IO</span><span class="fu">.</span><span class="dt">NoBuffering</span></a>
+<a class="sourceLine" id="cb2-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb2-18" data-line-number="18">  <span class="co">-- Write &quot;a&quot; to file</span></a>
+<a class="sourceLine" id="cb2-19" data-line-number="19">  _ <span class="ot">&lt;-</span> B.hPut handle bytes</a>
+<a class="sourceLine" id="cb2-20" data-line-number="20"></a>
+<a class="sourceLine" id="cb2-21" data-line-number="21">  <span class="co">-- Source the handle and consume the written content</span></a>
+<a class="sourceLine" id="cb2-22" data-line-number="22">  res <span class="ot">&lt;-</span> sourceHandle handle <span class="fu">$$</span> CL.consume</a>
+<a class="sourceLine" id="cb2-23" data-line-number="23"></a>
+<a class="sourceLine" id="cb2-24" data-line-number="24">  <span class="co">-- Close handle</span></a>
+<a class="sourceLine" id="cb2-25" data-line-number="25">  _ <span class="ot">&lt;-</span> <span class="dt">IO</span><span class="fu">.</span>hClose handle</a>
+<a class="sourceLine" id="cb2-26" data-line-number="26"></a>
+<a class="sourceLine" id="cb2-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb2-28" data-line-number="28">  <span class="co">-- Check result</span></a>
+<a class="sourceLine" id="cb2-29" data-line-number="29">  print <span class="fu">$</span> <span class="st">&quot;Result: &quot;</span> <span class="fu">++</span> show res</a></code></pre></div>
+<p>Sure enough the output would be <code>&quot;Result []&quot;</code> so I share my woes in #haskell. The issue was that when I wrote to the <code>Handle</code> the <code>&quot;a&quot;</code> would be in the file but the <code>Handle</code> is using a file pointer and is pointing at the next position. It's been a long time since I had to think about seeking in files...</p>
+<p>The solution in this case is to seek back to the beginning of the file after writing to it using:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="dt">IO</span><span class="fu">.</span>hSeek handle <span class="dt">IO</span><span class="fu">.</span><span class="dt">AbsoluteSeek</span> <span class="dv">0</span></a></code></pre></div>
+<h2 id="conclusion">Conclusion</h2>
+<p>The lesson I learned here was when you're in <code>IO</code> always watch your back because you're working with the RealWorld. On top of this you should probably not being doing reading and writing of files in the same phase of your program, but unfortunately this was for some resource testing so it had to be done. Hopefully this will stop someone going through the same headache I went through!</p>
+<p>If I've missed something or said something that's not correct then hit me up :)</p>
+
+        <br>
+        <br>
+
+        <!--Share buttons-->
+        <div class="social-buttons">
+            <a class="ext-link" href="https://github.com/FintanH/">
+                <img src="/images/github-logo.png" alt="Github Profile"/>
+            </a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        </div>
+</article>
+
+</div>
+
+<footer>
+    Built with Haskell ❤️
+</footer>
+
+<link href='https://fonts.googleapis.com/css?family=Quicksand:300,400' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+<script src="/js/main.js"></script>
+</body>
+</html>

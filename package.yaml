@@ -1,0 +1,33 @@
+name:                fintanh
+version:             0.1.0.0
+github:              "FintanH/FintanH.github.io"
+license:             BSD3
+author:              "Fintan Halpenny"
+maintainer:          "fintan.halpenny@gmail.com"
+copyright:           "2019 Fintan Halpenny"
+
+executables:
+  fintanh-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - shake == 0.18.2
+    - slick
+    - slick-live
+    - base >= 4.7 && < 5
+    - aeson
+    - lens-aeson
+    - lens
+    - pandoc
+    - text
+    - binary
+    - containers
+    - mustache
+    - time
+    - MissingH
+    - directory
+    - extra

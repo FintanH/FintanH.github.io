@@ -1,0 +1,5 @@
+.stack-work/
+.shake/
+*.swp
+fintanh.cabal
+*~
