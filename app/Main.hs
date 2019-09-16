@@ -77,6 +77,7 @@ buildIndex posts' = do
   let indexInfo = IndexInfo {posts = posts'}
       indexHTML = T.unpack $ substitute indexT (toJSON indexInfo)
   writeFileDist "index.html" indexHTML
+  writeFile' "index.html" indexHTML
 
 -- | Find all post source files and tell shake to build
 --   the corresponding html pages.
