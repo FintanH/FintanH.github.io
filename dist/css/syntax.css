@@ -21,11 +21,11 @@ code {
 /* CommentTok */
 .sourceCode .co { color: #F4F5F6; }
 /* OtherTok */
-.sourceCode .ot { color: #F4F5F6; }
+.sourceCode .ot { color: #EAFC40; }
 /* AlertTok */
 .sourceCode .al { color: #F4F5F6; font-weight: bold; }
 /* FunctionTok */
-.sourceCode .fu { color: #F4F5F6; }
+.sourceCode .fu { color: #EAFC40; }
 /* RegionMarkerTok */
 .sourceCode .re { }
 /* ErrorTok */
