@@ -3,6 +3,7 @@ function switchTheme(){
     var html = document.getElementsByTagName("html")[0];
     html.classList.toggle("dark");
 
+  /*
     if(button.innerHTML == "DAY"){
         button.innerHTML = "NIGHT";
         // Expire in two months
@@ -12,6 +13,7 @@ function switchTheme(){
         // Expire in two months
         setCookie("theme", "day", 60*24*60*60*1000);
     }
+    */
     return;
 }
 
