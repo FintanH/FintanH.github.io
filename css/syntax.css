@@ -1,5 +1,6 @@
 pre {
     background-color: #254558;
+    overflow: scroll;
 }
 
 code {
