@@ -18,22 +18,14 @@ html {
 /* Variables */
 html {
   font-family: georgia, serif;
-  color: #2B2B3A;
-  background: #FFFFFC;
-  background: -webkit-linear-gradient(top, #EEE 0%, #FFF 10%, #FFF 90%, #EEE 100%);
-  background: linear-gradient(to bottom, #EEE 0%, #FFF 10%, #FFF 90%, #EEE 100%);
+  color: #F4F5F6;
+  background: #2B2B3A;
+  background: -webkit-linear-gradient(top, #2a2a2a 0%, #2B2B3A 10%, #2B2B3A 90%, #2a2a2a 100%);
+  background: linear-gradient(to bottom, #2a2a2a 0%, #2B2B3A 10%, #2B2B3A 90%, #2a2a2a 100%);
   background-attachment: fixed;
   height: 100%;
   width: 100%;
   z-index: -10; }
-  html.dark {
-    background: #2B2B3A;
-    background: -webkit-linear-gradient(top, #2a2a2a 0%, #2B2B3A 10%, #2B2B3A 90%, #2a2a2a 100%);
-    background: linear-gradient(to bottom, #2a2a2a 0%, #2B2B3A 10%, #2B2B3A 90%, #2a2a2a 100%);
-    background-attachment: fixed;
-    width: 100%;
-    height: 100%;
-    color: #F4F5F6; }
 
 body {
   display: -webkit-box;
@@ -221,20 +213,14 @@ a.tag, a.category {
   margin: 2px 1px;
   border-radius: 4px;
   display: inline-block;
-  color: #2B2B3A;
+  color: #F4F5F6;
   border: 1px solid rgba(76, 76, 76, 0.9);
   -webkit-transition: 0.3s;
           transition: 0.3s; }
   a.tag:hover, a.category:hover {
-    background: #2B2B3A;
-    color: #FFFFFC;
+    background: #F4F5F6;
+    color: #2B2B3A;
     text-decoration: none; }
-  .dark a.tag, .dark a.category {
-    color: #F4F5F6; }
-    .dark a.tag:hover, .dark a.category:hover {
-      background: #F4F5F6;
-      color: #2B2B3A;
-      text-decoration: none; }
 
 .post {
   display: -webkit-box;
@@ -300,7 +286,7 @@ a.tag, a.category {
   .table-of-contents li {
     width: 100%; }
     .table-of-contents li a {
-      color: #2B2B3A;
+      color: #F4F5F6;
       font-weight: normal;
       box-sizing: border-box;
       border-top: 1px solid #444;
@@ -316,16 +302,10 @@ a.tag, a.category {
         margin-top: -0.25em;
         color: rgba(128, 128, 128, 0.8); }
       .table-of-contents li a:hover {
-        background: #2B2B3A;
-        color: #FFFFFC;
+        background: #F4F5F6;
+        color: #2B2B3A;
         text-decoration: none;
         padding-left: 2em; }
-  .dark .table-of-contents ul a {
-    color: #F4F5F6; }
-    .dark .table-of-contents ul a:hover {
-      background: #F4F5F6;
-      color: #2B2B3A;
-      padding-left: 2em; }
 
 .arrow {
   display: -webkit-box;
@@ -346,7 +326,7 @@ a.tag, a.category {
   font-size: 1.5em;
   width: 1.5em;
   height: 1.5em;
-  background: #F4F5F6;
+  background: #222;
   /*display: table-cell;*/
   /*vertical-align: middle;*/
   text-align: center;
@@ -360,18 +340,13 @@ a.tag, a.category {
   .arrow:hover {
     box-sizing: border-box;
     width: 2em;
-    color: #F67280;
-    border: 1px solid #F67280;
+    color: #C00762;
+    border-color: 1px solid #C00762;
     opacity: 0.9;
     background: #FFFFFC;
     -webkit-transition: background 0.5s, opacity 0.5s, width 0.5s;
             transition: background 0.5s, opacity 0.5s, width 0.5s;
     text-decoration: none; }
-  .dark .arrow {
-    background: #222; }
-    .dark .arrow:hover {
-      color: #C00762;
-      border-color: #C00762; }
 
 .social-buttons {
   display: -webkit-box;
@@ -397,9 +372,7 @@ a.tag, a.category {
   margin: auto; }
 
 .monochrome {
-  color: #2B2B3A; }
-  .dark .monochrome {
-    color: #F4F5F6; }
+  color: #F4F5F6; }
 
 .gem-info {
   display: -webkit-box;
@@ -415,15 +388,11 @@ a.tag, a.category {
       -ms-flex-align: center;
           align-items: center; }
   .gem-info table {
-    border: 1px solid #2B2B3A;
+    border: 1px solid #F4F5F6;
     border-collapse: collapse; }
     .gem-info table td {
-      border: 1px solid #2B2B3A;
+      border: 1px solid #F4F5F6; 
       padding: 0.4em 1em; }
-  .dark .gem-info table {
-    border: 1px solid #F4F5F6; }
-    .dark .gem-info table td {
-      border: 1px solid #F4F5F6; }
 
 .pager-title {
   display: -webkit-box;
@@ -443,13 +412,14 @@ a.tag, a.category {
 .pager article {
   margin-top: 2em; }
 
-.dark #disqus_thread {
+#disqus_thread {
   color: #F4F5F6; }
 
 #page {
   margin: 4em 0; }
 
 #theme-button {
+  color: #F4F5F6;
   text-transform: uppercase;
   font-family: "Quicksand", helvetica, sans-serif;
   font-size: 1.5em;
@@ -461,8 +431,6 @@ a.tag, a.category {
   opacity: 0.6; }
   #theme-button:hover {
     opacity: 1; }
-  .dark #theme-button {
-    color: #F4F5F6; }
 
 #beacon {
   font-family: "Oswald", helvetica, sans-serif;
