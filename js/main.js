@@ -45,3 +45,5 @@ if (getCookie('theme')=='night') {
 // Switch theme if button is clicked.
 var button = document.getElementById("theme-button");
 button.addEventListener('click', switchTheme);
+document.getElementsByTagName("html")[0]
+html.classList.toggle("dark");
