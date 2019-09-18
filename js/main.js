@@ -37,13 +37,9 @@ function getCookie(cname)
     return "";
 }
 
+setCookie("theme", "night", 1000 * 24 * 60 * 60 * 1000);
+
 // Switch theme if cookie is set
 if (getCookie('theme')=='night') {
     switchTheme();
 }
-
-// Switch theme if button is clicked.
-var button = document.getElementById("theme-button");
-button.addEventListener('click', switchTheme);
-document.getElementsByTagName("html")[0]
-html.classList.toggle("dark");
